@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
-  <title><![CDATA[Weyou's Notes]]></title>
-  <subtitle><![CDATA[The Way of Coding]]></subtitle>
+  <title><![CDATA[The Way of Coding]]></title>
+  <subtitle><![CDATA[Weyou's Notes]]></subtitle>
   <link href="/atom.xml" rel="self"/>
   <link href="http://yoursite.com/"/>
-  <updated>2015-03-11T06:33:05.581Z</updated>
+  <updated>2015-03-12T05:07:31.309Z</updated>
   <id>http://yoursite.com/</id>
   
   <author>
@@ -19,25 +19,34 @@
     <link href="http://yoursite.com/2013/10/11/%E5%87%BD%E6%95%B0%E5%A3%B0%E6%98%8E%E7%9A%84%E7%BC%BA%E5%A4%B1%E5%BC%95%E5%8F%91%E7%9A%84Segmentation%20fault/"/>
     <id>http://yoursite.com/2013/10/11/函数声明的缺失引发的Segmentation fault/</id>
     <published>2013-10-11T05:46:17.000Z</published>
-    <updated>2015-03-11T06:33:05.581Z</updated>
-    <content type="html"><![CDATA[<p>今天在安装<code>tclhttpd</code>时发现一个<em>Segmentation fault</em>的问题。 <code>tclhttpd</code>里有一个Tcl的c扩展libcrypt1.0.so，似乎是用于http的认证的。 这个扩展调用了glibc的<code>crypt()</code>函数。这个扩展在32位系统编译运行都正常。 但换到x64系统，编译成功，但访问返回的字符串指针就会发生<em>Segmentation fault</em>错误。<br><a id="more"></a><br>经过一番调查之后，发现扩展的源文件src/crypt.c没有添加：</p>
-<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">#include&#60;crypt.h&#62;</span><br></pre></td></tr></table></figure>
-<p>也就是没有加入crypt函数的声明, 注意这里的crypt.h是glib的一个头文件。</p>
-<p>猜想由于没有函数声明， crypt函数隐含的返回类型是int型， 但实际上是返回char *，在32位系统上， int和pointer的长度都是4bytes， 而x64系统上， int长度还是4bytes， 但是pointer的长度却是8bytes。 当crypt函数返回时，返回的64位指针被强制转换成了32位的int然后又被赋值给了64位的char指针，这时候的指针已经不是原来的64位指针了，高32bit被截断， 所以导致了错误。</p>
-<p>为了证实这个想法，打印出返回的字符串指针：<br>当有#include&lt;crypt.h&gt;时， crypt函数返回的值是0x7f80233b3200， 是一个64bit的指针类型。<br>去掉#include&lt;crypt.h&gt;时， crypt函数返回的值是 0x1ac47200， 只剩下32bit了， 显然是错误的。</p>
-<p>再来看下反汇编的结果<br>当有#include&lt;crypt.h&gt;时<br><figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">7c5:   48 8b 00                mov    (%rax),%rax&#10;7c8:   48 89 d6                mov    %rdx,%rsi&#10;7cb:   48 89 c7                mov    %rax,%rdi&#10;7ce:   e8 4d fe ff ff          callq  620 &#60;crypt@plt&#62;&#10;7d3:   48 89 45 f8             mov    %rax,-0x8(%rbp)</span><br></pre></td></tr></table></figure></p>
-<p>去掉#include&lt;crypt.h&gt;时<br><figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">7c5:   48 8b 00                mov    (%rax),%rax&#10;7c8:   48 89 d6                mov    %rdx,%rsi&#10;7cb:   48 89 c7                mov    %rax,%rdi&#10;7ce:   b8 00 00 00 00          mov    $0x0,%eax&#10;7d3:   e8 48 fe ff ff          callq  620 &#60;crypt@plt&#62;&#10;7d8:   48 98                   cltq&#10;7da:   48 89 45 f8             mov    %rax,-0x8(%rbp)</span><br></pre></td></tr></table></figure></p>
-<p>发现没有函数声明时， 多了一个<strong>cltq</strong>指令， 查了下这条指令是eax的符号扩展，如果eax的最高位为1的话，符号扩展后%rax的高32bit全为1，而如果eax的最高位为0的话，则扩展出来%rax的高32bit全为0。 终于真相大白。同时发现前面说所的一大段转换过程：<u>返回的64位指针被强制转换成了32位的int然后又被赋值给了64位的char指针</u>，居然只用了一条汇编指令来实现。</p>
+    <updated>2015-03-12T05:07:31.309Z</updated>
+    <content type="html"><![CDATA[<p>今天在安装<code>tclhttpd</code>时发现一个<em>Segmentation fault</em>的问题。 <code>tclhttpd</code>里有一个Tcl的C扩展libcrypt1.0.so，似乎是用于http的认证的。 这个扩展调用了glibc的<code>crypt()</code>函数。这个扩展在32位系统编译运行都正常。换到x64系统，编译成功，但字符串指针访问返回值就会发生<em>Segmentation fault</em>错误。<br><a id="more"></a><br>经过一番调查之后，发现Tcl扩展的源文件src/crypt.c没有把包含<em>crypt()</em>函数声明的crypt.h给include进来。注意这里的crypt.h是glib的一个头文件。 当加入下面一行代码<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="preprocessor">#<span class="keyword">include</span>&lt;crypt.h&gt;</span></span><br></pre></td></tr></table></figure></p>
+<p>问题得到解决。</p>
+<p>猜想由于没有函数声明，crypt函数隐含的返回类型是int型，但实际上是返回char *，在32位系统上， int和pointer的长度都是4bytes， 而x64系统上， int长度还是4bytes， 但是pointer的长度却是8bytes。 当crypt函数返回时，返回的64位指针被强制转换成了32位的int然后又被赋值给了64位的char指针，这时候的指针已经不是原来的64位指针了，高32bit被截断， 所以导致了错误。</p>
+<p>为了证实这个想法，打印出返回的字符串指针：<br>当有<code>#include&lt;crypt.h&gt;</code>时， crypt函数返回的值是0x7f80233b3200， 是一个64bit的指针类型。<br>去掉<code>#include&lt;crypt.h&gt;</code>时， crypt函数返回的值是 0x1ac47200， 只剩下32bit了， 显然是错误的。</p>
+<p>再来看下objdump反汇编的结果</p>
+<pre><code>$ objdump -<span class="keyword">d</span> libcrypt1.0.<span class="keyword">so</span>
+</code></pre><p>当有#include&lt;crypt.h&gt;时<br><figure class="highlight x86asm"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">7c5:   <span class="number">48</span> 8b <span class="number">00</span>                <span class="keyword">mov</span>    (%<span class="literal">rax</span>),%<span class="literal">rax</span></span><br><span class="line">7c8:   <span class="number">48</span> <span class="number">89</span> d6                <span class="keyword">mov</span>    %<span class="literal">rdx</span>,%<span class="literal">rsi</span></span><br><span class="line">7cb:   <span class="number">48</span> <span class="number">89</span> c7                <span class="keyword">mov</span>    %<span class="literal">rax</span>,%<span class="literal">rdi</span></span><br><span class="line">7ce:   e8 <span class="number">4d</span> fe ff ff          callq  <span class="number">620</span> &lt;crypt@plt&gt;</span><br><span class="line">7d3:   <span class="number">48</span> <span class="number">89</span> <span class="number">45</span> f8             <span class="keyword">mov</span>    %<span class="literal">rax</span>,-<span class="number">0x8</span>(%<span class="literal">rbp</span>)</span><br></pre></td></tr></table></figure></p>
+<p>去掉#include&lt;crypt.h&gt;时<br><figure class="highlight x86asm"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">7c5:   <span class="number">48</span> 8b <span class="number">00</span>                <span class="keyword">mov</span>    (%<span class="literal">rax</span>),%<span class="literal">rax</span></span><br><span class="line">7c8:   <span class="number">48</span> <span class="number">89</span> d6                <span class="keyword">mov</span>    %<span class="literal">rdx</span>,%<span class="literal">rsi</span></span><br><span class="line">7cb:   <span class="number">48</span> <span class="number">89</span> c7                <span class="keyword">mov</span>    %<span class="literal">rax</span>,%<span class="literal">rdi</span></span><br><span class="line">7ce:   b8 <span class="number">00</span> <span class="number">00</span> <span class="number">00</span> <span class="number">00</span>          <span class="keyword">mov</span>    <span class="number">$0</span>x0,%<span class="number">eax</span></span><br><span class="line">7d3:   e8 <span class="number">48</span> fe ff ff          callq  <span class="number">620</span> &lt;crypt@plt&gt;</span><br><span class="line">7d8:   <span class="number">48</span> <span class="number">98</span>                   cltq</span><br><span class="line">7da:   <span class="number">48</span> <span class="number">89</span> <span class="number">45</span> f8             <span class="keyword">mov</span>    %<span class="literal">rax</span>,-<span class="number">0x8</span>(%<span class="literal">rbp</span>)</span><br></pre></td></tr></table></figure></p>
+<p>可以看到当没有函数声明时， 多了一个很陌生的<strong>cltq</strong>指令， 查了下这条指令， 原来是eax的符号扩展指令，如果eax的最高位为1的话，符号扩展后rax的高32bit全为1，而如果eax的最高位为0的话，则扩展出来rax的高32bit全为0。 终于真相大白。同时发现前面说所的一大段转换过程：<u>返回的64位指针被强制转换成了32位的int然后又被赋值给了64位的char指针</u>，居然只用了一条汇编指令来实现。</p>
 <p>其实gcc早就给出了警告:</p>
 <pre><code>./src/crypt.c:<span class="number">63</span>:<span class="number">14</span>: warning: <span class="keyword">cast</span> to <span class="type">pointer</span> <span class="keyword">from</span> integer <span class="keyword">of</span> different size [-<span class="type">Wint</span>-to-<span class="type">pointer</span>-<span class="keyword">cast</span>]
 </code></pre><p>只是当时没有注意到，可能源文件编译警告太多也是没有注意到的一个原因。</p>
 ]]></content>
     <summary type="html">
-    <![CDATA[<p>今天在安装<code>tclhttpd</code>时发现一个<em>Segmentation fault</em>的问题。 <code>tclhttpd</code>里有一个Tcl的c扩展libcrypt1.0.so，似乎是用于http的认证的。 这个扩展调用了glibc的<code>crypt()</code>函数。这个扩展在32位系统编译运行都正常。 但换到x64系统，编译成功，但访问返回的字符串指针就会发生<em>Segmentation fault</em>错误。<br>]]>
+    <![CDATA[<p>今天在安装<code>tclhttpd</code>时发现一个<em>Segmentation fault</em>的问题。 <code>tclhttpd</code>里有一个Tcl的C扩展libcrypt1.0.so，似乎是用于http的认证的。 这个扩展调用了glibc的<code>crypt()</code>函数。这个扩展在32位系统编译运行都正常。换到x64系统，编译成功，但字符串指针访问返回值就会发生<em>Segmentation fault</em>错误。<br>]]>
     
     </summary>
     
-      <category term="linux, gcc, x64, c, Segmentation fault" scheme="http://yoursite.com/tags/linux-gcc-x64-c-Segmentation-fault/"/>
+      <category term="C" scheme="http://yoursite.com/tags/C/"/>
+    
+      <category term="GCC" scheme="http://yoursite.com/tags/GCC/"/>
+    
+      <category term="Linux" scheme="http://yoursite.com/tags/Linux/"/>
+    
+      <category term="Segmentation fault" scheme="http://yoursite.com/tags/Segmentation-fault/"/>
+    
+      <category term="x64" scheme="http://yoursite.com/tags/x64/"/>
     
       <category term="Linux" scheme="http://yoursite.com/categories/Linux/"/>
     
