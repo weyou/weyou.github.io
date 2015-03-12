@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   
-  <title>函数声明的缺失引发的Segmentation fault | The Way of Coding</title>
+  <title>函数声明的缺失引发的Segmentation fault | { The Way of Coding }</title>
   <meta name="author" content="Kelvin You">
   
   <meta name="description" content="今天在安装tclhttpd时发现一个Segmentation fault的问题。 tclhttpd里有一个Tcl的C扩展libcrypt1.0.so，似乎是用于http的认证的。 这个扩展调用了glibc的crypt()函数。这个扩展在32位系统编译运行都正常。换到x64系统，编译成功，但字符串指针访问返回值就会发生Segmentation fault错误。">
@@ -12,14 +12,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 
   <meta property="og:title" content="函数声明的缺失引发的Segmentation fault"/>
-  <meta property="og:site_name" content="The Way of Coding"/>
+  <meta property="og:site_name" content="{ The Way of Coding }"/>
 
   
     <meta property="og:image" content="undefined"/>
   
 
   <link href="/favicon.png" rel="icon">
-  <link rel="alternate" href="atom.xml" title="The Way of Coding" type="application/atom+xml">
+  <link rel="alternate" href="atom.xml" title="{ The Way of Coding }" type="application/atom+xml">
   <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
   <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
   
@@ -29,7 +29,7 @@
 
 <body>
   <header id="header" class="inner"><div class="alignleft">
-  <h1><a href="/">The Way of Coding</a></h1>
+  <h1><a href="/">{ The Way of Coding }</a></h1>
   <h2><a href="/">Weyou&#39;s Notes</a></h2>
 </div>
 <nav id="main-nav" class="alignright">
@@ -91,21 +91,9 @@
 
         
 
-<div class="ds-share" data-thread-key="post-函数声明的缺失引发的Segmentation fault" data-title="函数声明的缺失引发的Segmentation fault" data-images="此处请替换为分享时显示的图片的链接地址" data-content="此处请替换为分享时显示的内容" data-url="http://yoursite.com/2013/10/11/函数声明的缺失引发的Segmentation fault/">
-    <div class="ds-share-inline">
-      <ul  class="ds-share-icons-">
+<div class="bdsharebuttonbox"><a href="#" class="bds_more" data-cmd="more"></a><a title="分享到有道云笔记" href="#" class="bds_youdao" data-cmd="youdao"></a><a title="分享到新浪微博" href="#" class="bds_tsina" data-cmd="tsina"></a><a title="分享到Facebook" href="#" class="bds_fbook" data-cmd="fbook"></a></div>
+<script>window._bd_share_config={"common":{"bdSnsKey":{},"bdText":"","bdMini":"2","bdMiniList":false,"bdPic":"","bdStyle":"2","bdSize":"16"},"share":{}};with(document)0[(getElementsByTagName('head')[0]||body).appendChild(createElement('script')).src='http://bdimg.share.baidu.com/static/api/js/share.js?v=89860593.js?cdnversion='+~(-new Date()/36e5)];</script>
 
-        <li data-toggle="ds-share-icons-more"><a class="ds-more" href="javascript:void(0);">分享到：</a></li>
-        <li><a class="ds-weibo" href="javascript:void(0);" data-service="weibo">微博</a></li>
-        <li><a class="ds-qzone" href="javascript:void(0);" data-service="qzone">QQ空间</a></li>
-        <li><a class="ds-qqt" href="javascript:void(0);" data-service="qqt">腾讯微博</a></li>
-        <li><a class="ds-wechat" href="javascript:void(0);" data-service="wechat">微信</a></li>
-
-      </ul>
-      <div class="ds-share-icons-more">
-      </div>
-    </div>
- </div>
       
       <div class="clearfix"></div>
     </footer>
