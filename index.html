@@ -17,7 +17,7 @@
   
 
   <link href="/favicon.png" rel="icon">
-  <link rel="alternate" href="atom.xml" title="{ The Way of Coding }" type="application/atom+xml">
+  <link rel="alternate" href="/atom.xml" title="{ The Way of Coding }" type="application/atom+xml">
   <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
   <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
   
@@ -50,6 +50,10 @@
     
       <li><a href="/archives">Archives</a></li>
     
+      <li><a href="/about">About</a></li>
+    
+      <li><a href="/atom.xml">RSS</a></li>
+    
   </ul>
   <div class="clearfix"></div>
 </nav>
@@ -72,7 +76,7 @@
     </header>
     <div class="entry">
       
-        <p>今天在安装<code>tclhttpd</code>时发现一个<em>Segmentation fault</em>的问题。 <code>tclhttpd</code>里有一个Tcl的C扩展libcrypt1.0.so，似乎是用于http的认证的。 这个扩展调用了glibc的<code>crypt()</code>函数。这个扩展在32位系统编译运行都正常。换到x64系统，编译成功，但字符串指针访问返回值就会发生<em>Segmentation fault</em>错误。<br>
+        <p>今天在安装<code>tclhttpd</code>时发现一个<em>Segmentation fault</em>的问题。<code>tclhttpd</code>里有一个Tcl的C扩展libcrypt1.0.so，似乎是用于http的认证的。 这个扩展调用了glibc的<code>crypt()</code>函数。这个扩展在32位系统编译运行都正常。换到64位系统，编译成功，但字符串指针访问返回值就会发生<em>Segmentation fault</em>错误。<br>
       
     </div>
     <footer>
@@ -130,9 +134,18 @@
   
     <li><a href="/tags/Segmentation-fault/">Segmentation fault</a><small>1</small></li>
   
-    <li><a href="/tags/x64/">x64</a><small>1</small></li>
+    <li><a href="/tags/x86-64/">x86_64</a><small>1</small></li>
   
   </ul>
+</div>
+
+
+  
+<div class="widget tagcloud">
+  <h3 class="title">标签云</h3>
+  <div class="entry">
+    <a href="/tags/C/" style="font-size: NaNpx;">C</a><a href="/tags/GCC/" style="font-size: NaNpx;">GCC</a><a href="/tags/Linux/" style="font-size: NaNpx;">Linux</a><a href="/tags/Segmentation-fault/" style="font-size: NaNpx;">Segmentation fault</a><a href="/tags/x86-64/" style="font-size: NaNpx;">x86_64</a>
+  </div>
 </div>
 
 </aside>
@@ -144,7 +157,7 @@
   
 </div>
 <div class="clearfix"></div></footer>
-  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+  <script src="/js/jquery.min.js"></script>
 <script src="/js/jquery.imagesloaded.min.js"></script>
 <script src="/js/gallery.js"></script>
 
