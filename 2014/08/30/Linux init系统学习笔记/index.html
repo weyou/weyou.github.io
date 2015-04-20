@@ -1,0 +1,366 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>Linux init系统学习笔记 | { The Way of Coding }</title>
+  <meta name="author" content="Kelvin You">
+  
+  <meta name="description" content="什么是init系统Linux的启动过程大致如下:BIOS -&amp;gt; Boot Loader -&amp;gt; Load Kernel -&amp;gt; Kernel初始化 -&amp;gt; 创建pid=1的init进程">
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="Linux init系统学习笔记"/>
+  <meta property="og:site_name" content="{ The Way of Coding }"/>
+
+  
+    <meta property="og:image" content="undefined"/>
+  
+
+  <link href="/favicon.png" rel="icon">
+  <link rel="alternate" href="/atom.xml" title="{ The Way of Coding }" type="application/atom+xml">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+  
+<script type="text/javascript">
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-60682241-1']);
+  
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+</script>
+
+
+</head>
+
+
+<body>
+  <header id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">{ The Way of Coding }</a></h1>
+  <h2><a href="/">Weyou&#39;s Notes</a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+      <li><a href="/about">About</a></li>
+    
+      <li><a href="/atom.xml">RSS</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div></header>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2014-08-30T06:57:45.000Z"><a href="/2014/08/30/Linux init系统学习笔记/">2014-08-30</a></time>
+      
+      
+  
+    <h1 class="title">Linux init系统学习笔记</h1>
+  
+
+    </header>
+    <div class="entry">
+      
+        <h2 id="什么是init系统">什么是init系统</h2><p>Linux的启动过程大致如下:<br>BIOS -&gt; Boot Loader -&gt; Load Kernel -&gt; Kernel初始化 -&gt; 创建pid=1的init进程<br><a id="more"></a><br>init进程有以下特点：</p>
+<ul>
+<li>以守护进程方式存在，PID是1，是所有其他进程的祖先</li>
+<li>负责组织和运行许多独立的相关的初始化化工作 </li>
+<li>按照预设的运行模式（runlevel）启动shell或者X图形界面</li>
+</ul>
+<p>init进程和与其相关的工作过程被称为<strong>init系统</strong>。</p>
+<h2 id="init系统的主要分类">init系统的主要分类</h2><p>传统的init: BSDinit, Sysvinit<br>现代的init: UpStart, Systemd</p>
+<h2 id="BSDinit">BSDinit</h2><p>运行<strong>/etc/rc</strong>，然后启动基于文本模式的终端(getty)或者基于图形界面的终端(窗口系统，如X)， 所有的工作都在rc中进行。</p>
+<p>BSDinit简单且易于手动编辑。但如果第三方软件需要在启动过程执行它自身的初始化脚本，它必须修改已经存在的启动脚本，一旦这种过程中有一个小错误，都将导致系统无法正常启动。</p>
+<p>现代的BSD风格的init使用rc.local和rc.d中的子脚本来降低系统无法启动的风险。</p>
+<h2 id="Sysvinit">Sysvinit</h2><p>这种init系统被广泛使用，源于System V系列的UNIX， 是System V相兼容的，称为sysvinit。<br>Sysvinit读取/etc/inittab 文件，获取运行模式及工作范围，然后利用<em>Shell脚本</em>，<em>文件命名规则</em>和<em>软链接</em>来实现不同的runlevel。<br>通常会有 8 种运行模式，即运行模式 0 到 6 和 S 或者 s。  每个发行版都有不同的定义，但 0， 1， 6的定义通常是一致的：</p>
+<ul>
+<li>0 关机</li>
+<li>1 单用户模式</li>
+<li>6 重启</li>
+</ul>
+<p>可以用一下命令来获取当前的运行模式<br><figure class="highlight elixir"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="variable">$ </span>runlevel</span><br><span class="line"><span class="variable">$ </span>who -r</span><br></pre></td></tr></table></figure></p>
+<h3 id="工作流程">工作流程</h3><p>/etc/rc.d/rc.sysinit  -&gt; /etc/rc.d/rc 和/etc/rc.d/rcX.d/ -&gt; /etc/rc.d/rc.local </p>
+<p>首先执行<strong>rc.sysinit</strong>，主要有完成以下工作。</p>
+<ul>
+<li>激活 udev 和 selinux</li>
+<li>设置定义在/etc/sysctl.conf 中的内核参数</li>
+<li>设置系统时钟</li>
+<li>加载keymaps</li>
+<li>使能交换分区</li>
+<li>设置主机名(hostname)</li>
+<li>根分区检查和remount</li>
+<li>激活 RAID 和 LVM 设备</li>
+<li>开启磁盘配额</li>
+<li>检查并挂载所有文件系统</li>
+<li>清除过期的 locks 和 PID 文件</li>
+</ul>
+<p>然后执行<strong>/etc/rc.d/rc</strong>脚本， rc脚本根据runlevel去<strong>/etc/rc.d/rcX.d</strong>（(X 代表运行级别 0-6）去找到所有S打头的启动脚本按照S后面的数字顺序执行。这些脚本除了<strong>SXXlocal</strong>以外，其他都是/etc/init.d下面服务进程的启动脚本的软链接。</p>
+<p><strong>SXXlocal</strong>是<strong>/etc/rc.d/rc.local</strong>脚本的的软链接。S后面的数字XX比较靠后，所以一般在所有脚本的最后运行。之所以单独提出来，是因为通常一些用户希望跟随系统启动的程序可以在这里加载。</p>
+<p>如果是GUI模式的runlevel，最后还要启动GUI管理器</p>
+<ul>
+<li>X Display Manager</li>
+</ul>
+<p>当<strong>关闭系统</strong>的时候，Sysvinit也会执行<strong>/etc/rc.d/rcX.d</strong>下面的脚本，与启动不同的是，关闭的时候执行的是K打头的启动脚本， 同样K后面的数字决定了执行的顺序。</p>
+<h3 id="管理命令">管理命令</h3><ul>
+<li>service <name> start</name></li>
+<li>service <name> stop</name></li>
+<li>service <name> restart</name></li>
+<li>service <name> reload</name></li>
+</ul>
+<h3 id="总结">总结</h3><p>概念简单，直接用shell脚本，不需要学习特殊语法。顺序执行所以易于排错。但是缺点也是依赖于脚本，导致启动比较慢，已不适应移动设备快速启动的需求。</p>
+<h2 id="UpStart">UpStart</h2><p>Sysvinit适合用在服务器环境， 服务器环境不会频繁重启，也不会频繁增减外设。<br>而在Linux2.6时代，桌面系统开始成熟，频繁的重启则使人们对重启的时间有了要求，外设的热插拔导致只能顺序执行的Sysvinit无法胜任。<br>而基于事件驱动模型的UpStart则很好的解决了这些问题。UpStart 可以：</p>
+<ul>
+<li>更快地启动系统</li>
+<li>当新硬件被发现时动态启动服务</li>
+<li>硬件被拔除时动态停止服务</li>
+</ul>
+<p>UpStart成为Ubuntu默认的init系统。</p>
+<h3 id="基本概念">基本概念</h3><p>首先要理解两个概念： <strong>Job</strong>和<strong>Event</strong>。 每个Job 都等待一个或多个事件，一旦事件发生，UpStart就触发该 job 完成相应的工作</p>
+<h4 id="Job">Job</h4><p>Job是一个工作单元，一个任务或者一个服务。可以理解为 sysvinit 中的一个服务脚本。有三种类型</p>
+<ul>
+<li>task job<br>一定时间内会执行完毕的任务。</li>
+<li>service job<br>后台服务进程，一般是不会退出的。</li>
+<li>abstract job<br>UpStart内部使用，不需要关心。</li>
+</ul>
+<p>还可以从Job的工作范围分为2类：</p>
+<ul>
+<li>System Job<br>系统初始化使用的Job</li>
+<li>Session Job<br>用户会话初始化使用的Job</li>
+</ul>
+<p>|| 状态名  || 含义 ||<br>| Waiting   |  初始状态 |<br>| Starting    |  Job 即将开始 |<br>| pre-start    |  执行 pre-start 段，即任务开始前应该完成的工作 |<br>| Spawned    |  准备执行 script 或者 exec 段 |<br>| post-start  |    执行 post-start 动作 |<br>| Running     | 运行阶段 |<br>| pre-stop    |  执行 pre-stop 段 |<br>| Stopping    |  interim state set after pre-stop section processed |<br>| Killed      | 任务即将被停止 |<br>| post-stop     | 执行 post-stop 段  |</p>
+<h6 id="Job的状态转换">Job的状态转换</h6><p><img src="http://7ximrm.com1.z0.glb.clouddn.com/twocupstart-states.png" alt="Job的状态转换"></p>
+<ul>
+<li>菱形的节点代表了静止的状态</li>
+<li>椭圆形的节点代表的状态中可以执行一些操作</li>
+<li>矩形的节点代表了进入下一个状态之前将会发出的Event</li>
+<li>所有的节点根据Event发出的时间阶段被划分成了4个虚拟状态(Starting/Started/Stopping/Stopped)来反应</li>
+<li>从节点出发的绿色箭头导向的目标为start</li>
+<li>从节点出发的红色箭头导向的目标为stop</li>
+</ul>
+<p>当工作的状态即将发生变化的时候，UpStart进程会发出相应的事件（event）<br>其中有四个状态会引起UpStart进程发送相应的事件，表明该Job的相应变化：</p>
+<ul>
+<li>Starting</li>
+<li>Started</li>
+<li>Stopping</li>
+<li>Stopped</li>
+</ul>
+<p>而其它的状态变化不会发出事件</p>
+<h4 id="Event">Event</h4><p>事件以系统通知消息的形式存在。 当一个Event发生时，所有的Upstart组件都会得到通知。</p>
+<p>Event有三种类型：<br>|| Event || Synchronized|| Result Available ||<br>| Signals | No | No |<br>| Methods | Yes | Yes |<br>| Hooks | Yes | No |</p>
+<p>init支持的Event各个发行版都有不同的定义， 可以用以下命令来查看：<br><figure class="highlight matlab"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">man <span class="number">7</span> upstart-<span class="keyword">events</span></span><br></pre></td></tr></table></figure></p>
+<h3 id="工作流程-1">工作流程</h3><p>系统初始化时，init 进程开始运行，init进程自身会发出不同的Event，这些最初的事件会触发一些Job运行。每个Job运行过程中会释放不同的Event，这些Event又将触发新的Job运行。如此反复，直到整个系统正常运行起来。</p>
+<h5 id="Job的配置文件">Job的配置文件</h5><p>配置文件存在在/etc/init下面， 有点类似于Sysvinit的/etc/init.d<br>配置文件定义了一个Job，可以由以下几个字段组成：</p>
+<ul>
+<li>author/description<br> 这两个字段顾名思义，无需赘言</li>
+<li>expect<br>用于告知UpStart这个任务会fork几次， UpStart以此来记录正真的PID用于任务的管理<ul>
+<li>expect fork：表示进程只会 fork 一次</li>
+<li>expect daemonize：表示进程会 fork 两次<br>这个字段很重要， 如果设置错误，可能会影响到Job的停止功能。</li>
+</ul>
+</li>
+<li><p>script/exec<br>Job的具体内容，如果是运行一段shell脚本， 就用script</p>
+<figure class="highlight applescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">script</span></span><br><span class="line">&lt;...shell <span class="keyword">script</span>...&gt;</span><br><span class="line"><span class="keyword">end</span> <span class="keyword">script</span></span><br></pre></td></tr></table></figure>
+<p>如果是运行一个程序</p>
+<figure class="highlight r"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">  exec &lt;command&gt; &lt;args&gt;<span class="keyword">...</span></span><br><span class="line">  ``` </span><br><span class="line">- start on</span><br><span class="line">  定义了触发Job的所有事件，语法：</span><br><span class="line">  ```start on EVENT [[KEY=]VALUE]<span class="keyword">...</span> [and|or...]</span><br></pre></td></tr></table></figure>
+<p>用 KEY=VALUE 来表示额外的条件，一般是某个环境变量(KEY)和特定值(VALUE)进行比较。比如：</p>
+<figure class="highlight applescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">start <span class="function_start"><span class="keyword">on</span></span> (<span class="keyword">local</span>-filesystems <span class="keyword">and</span> net-device-up IFACE!=lo)</span><br></pre></td></tr></table></figure>
+<p>如果只有一个变量，或者变量的顺序已知，则 KEY 可以省略。比如：</p>
+<figure class="highlight apache"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">start</span> <span class="literal">on</span> runlevel<span class="sqbracket"> [2345]</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>stop on<br>类似于start on， 定义了需要Job停止的所有事件</p>
+</li>
+</ul>
+<h5 id="UpStart启动过程">UpStart启动过程</h5><p><img src="http://7ximrm.com1.z0.glb.clouddn.com/twocimage004[1].png" alt="Job的状态转换"><br>UpStart并没有运行模式的概念，但是为了兼容原有的软件， UpStart用Job模拟了SysV的运行模式, 可以参看/etc/init/rc-sysinit.conf和/etc/init/rc.conf.<br>这就是为什么Ubuntu下定义在/etc/init.d的服务还是可以正常工作的原因</p>
+<h3 id="管理命令-1">管理命令</h3><p>最主要的命令是<strong>initctl</strong>, 常用的简化命令有：</p>
+<ul>
+<li>start <job></job></li>
+<li>stop <job></job></li>
+<li>restart <job></job></li>
+<li>reload <job></job></li>
+</ul>
+<p>这些命令都是<strong>initctl</strong>命令的软链接。</p>
+<p>此外还可以使用 initctl 的 emit 命令从命令行发送一个事件用于排错。<br><figure class="highlight mel"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">initctl <span class="keyword">emit</span> &lt;<span class="keyword">event</span>&gt;</span><br></pre></td></tr></table></figure></p>
+<h3 id="总结-1">总结</h3><p>并发进程让启动时间更短，支持事件驱动服务的启停，兼容现有的Sysvinit的服务。</p>
+<h2 id="Systemd">Systemd</h2><p>Systemd是后起之秀， 和UpStart一样, Systemd提供了和Sysvinit以及LSB initscripts兼容的特性。不同的是Systemd进一步提高了服务启动的并发性。</p>
+<h3 id="工作流程-2">工作流程</h3><p>先看一下UpStart 对 Sysvinit的改进</p>
+<p><img src="http://7ximrm.com1.z0.glb.clouddn.com/twocimage003[1].jpg" alt="UpStart 对 SysVinit 的改进"><br>*原文章配图有误， 已更正</p>
+<ul>
+<li>C和D依赖于B， B依赖于A</li>
+<li>F依赖于E</li>
+<li>G不依赖任何服务</li>
+</ul>
+<p>可以看到Sysvinit中， 没有依赖关系的服务也必须顺序启动，浪费了很多启动时间。<br>而对于UpStart来说，有依赖关系的服务必须先启动，只有不相关的服务才可以并行启动， 比如A，E，G可以同时启动，C和D也是同时启动。</p>
+<p>在看一下Systemd对Sysvinit的改进<br><img src="http://7ximrm.com1.z0.glb.clouddn.com/twocimage005.jpg" alt="Systemd对 SysVinit 的改进"><br>可以看到Systemd几乎所有的服务都可以并行启动，即使他们之间有依赖关系。这是怎么做到的呢？</p>
+<p>Systemd可以用以下方式来解除依赖：</p>
+<ul>
+<li><p>Socket activation<br>如果服务A用套接字S1提供自己的服务，往常的方式是B必须等到A启动以后才能连接套接字S1. 现在Systemd可以先单独创建一个套接字S1，然后让A和B同时启动，如果B启动完成后，A还没有完成，B发向S1的请求会被缓存，直到A完成启动后接管套接字S1的处理。 这种解除依赖的方式类似于<code>inetd</code>，利用了父子进程之间套接字可以继承的原理。</p>
+</li>
+<li><p>D-Bus activation<br>与Socket activation类似，只不过Socke换成D-Bus</p>
+</li>
+<li><p>autofs<br>文件系统的挂载非常耗时，Systemd借鉴了autofs的设计思路。即使文件系统挂载点未准备就绪， 那些依赖于这个挂载点的服务也可以并发启动，只不过<code>open()</code>系统调用会被挂起，然后等待真正的挂载操作完成。 之后让<code>open()</code>操作返回。</p>
+<blockquote>
+<p>当然对于”/“根目录的依赖实际上一定还是要串行执行，因为 systemd 自己也存放在/之下，必须等待系统根目录挂载检查好。</p>
+</blockquote>
+</li>
+</ul>
+<p>如果以上3种手段解决不了的依赖， Systemd也只能让它们顺序执行了。</p>
+<h5 id="Systemd的特点">Systemd的特点</h5><ul>
+<li>按需启动，只有在正真用到的时候才启动相关服务</li>
+<li>使用cgroup来跟踪管理进程，免除了UpStart设定fork次数的困扰</li>
+<li>启动挂载点和自动挂载的管理</li>
+<li>事务性依赖关系管理</li>
+<li>系统快照和恢复</li>
+<li>日志服务</li>
+</ul>
+<h3 id="Systemd的争议">Systemd的争议</h3><p>Systemd在Linux社区一直饱受争议，主要是因为Systemd接管了原本是inetd, syslog, crond, udev等独立进程负责的事情。 与<em>Unix的哲学</em>（只做一件事，并且把它做好）相违背。并且因为接管的事情过多， 导致对别的平台（比如FreeBSD）无法支持。</p>
+<p>References:<br><a href="http://zh.wikipedia.org/zh-cn/Init" target="_blank" rel="external">维基百科init词条</a><br><a href="http://upstart.ubuntu.com" target="_blank" rel="external">UpStart Wiki</a><br><a href="http://www.ibm.com/developerworks/cn/linux/1407_liuming_init1/index.html" target="_blank" rel="external">浅析 Linux 初始化 init 系统</a></p>
+
+      
+    </div>
+    <footer>
+      
+        
+  
+  <div class="categories">
+    <a href="/categories/Linux/">Linux</a>
+  </div>
+
+        
+  
+  <div class="tags">
+    <a href="/tags/Linux/">Linux</a>
+  </div>
+
+        
+
+<div class="bdsharebuttonbox"><a href="#" class="bds_more" data-cmd="more"></a><a title="分享到有道云笔记" href="#" class="bds_youdao" data-cmd="youdao"></a><a title="分享到新浪微博" href="#" class="bds_tsina" data-cmd="tsina"></a><a title="分享到Facebook" href="#" class="bds_fbook" data-cmd="fbook"></a></div>
+<script>window._bd_share_config={"common":{"bdSnsKey":{},"bdText":"","bdMini":"2","bdMiniList":false,"bdPic":"","bdStyle":"2","bdSize":"16"},"share":{}};with(document)0[(getElementsByTagName('head')[0]||body).appendChild(createElement('script')).src='http://bdimg.share.baidu.com/static/api/js/share.js?v=89860593.js?cdnversion='+~(-new Date()/36e5)];</script>
+
+      
+      <div class="clearfix"></div>
+    </footer>
+  </div>
+</article>
+
+
+<section id="comment">
+  <h1 class="title">留言</h1>
+
+  
+    <!-- 多说评论框 start -->
+      <div class="ds-thread" data-thread-key="post-Linux init系统学习笔记" data-title="Linux init系统学习笔记" data-url="http://yoursite.com/2014/08/30/Linux init系统学习笔记/"></div>
+    <!-- 多说评论框 end -->
+    <!-- 多说公共JS代码 start (一个网页只需插入一次) -->
+    <script type="text/javascript">
+    var duoshuoQuery = {short_name:"twoc"};
+      (function() {
+        var ds = document.createElement('script');
+        ds.type = 'text/javascript';ds.async = true;
+        ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+        ds.charset = 'UTF-8';
+        (document.getElementsByTagName('head')[0]
+         || document.getElementsByTagName('body')[0]).appendChild(ds);
+      })();
+      </script>
+    <!-- 多说公共JS代码 end -->
+  
+
+</section>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  <div class="search">
+  <form action="//google.com/search" method="get" accept-charset="utf-8">
+    <input type="search" name="q" results="0" placeholder="搜索">
+    <input type="hidden" name="q" value="site:yoursite.com">
+  </form>
+</div>
+
+  
+<div class="widget tag">
+  <h3 class="title">分类</h3>
+  <ul class="entry">
+  
+    <li><a href="/categories/Linux/">Linux</a><small>2</small></li>
+  
+    <li><a href="/categories/Python/">Python</a><small>1</small></li>
+  
+  </ul>
+</div>
+
+
+  
+<div class="widget tag">
+  <h3 class="title">标签</h3>
+  <ul class="entry">
+  
+    <li><a href="/tags/C/">C</a><small>1</small></li>
+  
+    <li><a href="/tags/GCC/">GCC</a><small>1</small></li>
+  
+    <li><a href="/tags/IPC/">IPC</a><small>1</small></li>
+  
+    <li><a href="/tags/Linux/">Linux</a><small>2</small></li>
+  
+    <li><a href="/tags/Pyro/">Pyro</a><small>1</small></li>
+  
+    <li><a href="/tags/Python/">Python</a><small>1</small></li>
+  
+    <li><a href="/tags/Segmentation-fault/">Segmentation fault</a><small>1</small></li>
+  
+    <li><a href="/tags/x86-64/">x86_64</a><small>1</small></li>
+  
+  </ul>
+</div>
+
+
+  
+<div class="widget tagcloud">
+  <h3 class="title">标签云</h3>
+  <div class="entry">
+    <a href="/tags/C/" style="font-size: 10px;">C</a><a href="/tags/GCC/" style="font-size: 10px;">GCC</a><a href="/tags/IPC/" style="font-size: 10px;">IPC</a><a href="/tags/Linux/" style="font-size: 20px;">Linux</a><a href="/tags/Pyro/" style="font-size: 10px;">Pyro</a><a href="/tags/Python/" style="font-size: 10px;">Python</a><a href="/tags/Segmentation-fault/" style="font-size: 10px;">Segmentation fault</a><a href="/tags/x86-64/" style="font-size: 10px;">x86_64</a>
+  </div>
+</div>
+
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <footer id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2015 Kelvin You
+  
+</div>
+<div class="clearfix"></div></footer>
+  <script src="/js/jquery.min.js"></script>
+<script src="/js/jquery.imagesloaded.min.js"></script>
+<script src="/js/gallery.js"></script>
+
+
+
+
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css" media="screen" type="text/css">
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+  $('.fancybox').fancybox();
+})(jQuery);
+</script>
+
+<a href="https://github.com/weyou"><img style="position: absolute; top: 0; left: 0; border: 0;" src="https://camo.githubusercontent.com/121cd7cbdc3e4855075ea8b558508b91ac463ac2/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f6c6566745f677265656e5f3030373230302e706e67" alt="Fork me on GitHub" data-canonical-src="https://s3.amazonaws.com/github/ribbons/forkme_left_green_007200.png"></a>
+</body>
+</html>

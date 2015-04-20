@@ -102,16 +102,16 @@
 <p> 这个uri就是上面的服务端例子输出的uri， 可以直接使用。</p>
 </li>
 <li><p>使用对象名称去Pyro name server进行查询</p>
-<p> 方式1的uri包含了很多个部分，它们唯一标识了这个Pyro的对象，但是很多时候我们并不关心这个对象服务被部署在哪个Host， 哪个Port。 我们希望只要知道这个对象的名字就可以直接调用它。 这有点类似于即插即用的概念， 就像我们访问google的时候，只要记住了google的域名， 不知道他的IP地址也可以访问， 哪怕有一天google的实际IP改变了， 我们也不需要去关心。</p>
+<p>方式1的uri包含了很多个部分，它们唯一标识了这个Pyro的对象，但是很多时候我们并不关心这个对象服务被部署在哪个Host， 哪个Port。 我们希望只要知道这个对象的名字就可以直接调用它。 这有点类似于即插即用的概念， 就像我们访问google的时候，只要记住了google的域名， 不知道他的IP地址也可以访问， 哪怕有一天google的实际IP改变了， 我们也不需要去关心。</p>
 <p>很显然， 我们需要一个名称服务器（name server）来帮助我们完成这件事， 听起来很像域名服务器的样子。好吧， 这玩意完全可以看做是一个简化版的域名服务器。做个类比的话， 上面的例子中daemon.register函数返回的uri就是相当于ip地址。 对象名称就相当于域名。只要知道了域名就可以通过名称服务器查询到对象的地址uri。所幸的是Pyro已经内置了一个name server. 当服务端生成一个Pyro对象时， 同时把这个对象注册到name server上。</p>
 <figure class="highlight nix"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="variable">hello =</span> Hello()</span><br><span class="line"><span class="variable">daemon=</span>Pyro4.Daemon(<span class="variable">host=</span>'server-desktop', <span class="variable">port=</span><span class="number">9999</span>)     <span class="comment"># 创建一个Pyro的Daemon, 其中server-desktop是server</span></span><br><span class="line"><span class="variable">uri=</span>daemon.register(hello)                 <span class="comment"># 把hello对象注册到Pyro的Daemon</span></span><br><span class="line"><span class="variable">ns=</span>Pyro4.locateNS()                        <span class="comment"># 创建name server对象</span></span><br><span class="line">ns.register(<span class="string">"hello.object.test"</span>, uri)      <span class="comment"># 把uri注册到name server并且起一个便于记忆的名字hello.object.test</span></span><br><span class="line">daemon.requestLoop()                       <span class="comment"># 启动Daemon并等待客户端的调用指令。</span></span><br></pre></td></tr></table></figure>
 <p>客户端可以通过name server来查询到名字为<code>hello.object.test</code>的真正地址。</p>
- <figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> Pyro4</span><br><span class="line">nameserver = Pyro4.locateNS()</span><br><span class="line">uri_string = nameserver.lookup(<span class="string">"hello.object.test"</span>)   <span class="comment"># 查询到hello.object.test的uri</span></span><br></pre></td></tr></table></figure>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> Pyro4</span><br><span class="line">nameserver = Pyro4.locateNS()</span><br><span class="line">uri_string = nameserver.lookup(<span class="string">"hello.object.test"</span>)   <span class="comment"># 查询到hello.object.test的uri</span></span><br></pre></td></tr></table></figure>
 </li>
 <li><p>直接使用对象名字，让Pyro自动查询。</p>
-<p> 就如同访问一个网站既可以用ip访问也可以用域名访问一样，Pyro对象也可以通过指定对象名字来直接访问</p>
- <figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">uri_string = <span class="string">"PYRONAME:hello.object.test"</span></span><br></pre></td></tr></table></figure>
-<p> 有了这种简单的方式，还有什么理由还要去用第二种方式呢？ 好吧， 如果只采用默认的查询，确实没有必要用方式2。因为方式2就是方式3的内部实现。</p>
+<p>就如同访问一个网站既可以用ip访问也可以用域名访问一样，Pyro对象也可以通过指定对象名字来直接访问</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">uri_string = <span class="string">"PYRONAME:hello.object.test"</span></span><br></pre></td></tr></table></figure>
+<p>有了这种简单的方式，还有什么理由还要去用第二种方式呢？ 好吧， 如果只采用默认的查询，确实没有必要用方式2。因为方式2就是方式3的内部实现。</p>
 </li>
 </ol>
 <p>有了远程对象的uri， 就可以创建Pyro对象了<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="prompt">&gt;&gt;&gt; </span>obj = Pyro4.Proxy(uri_string )</span><br></pre></td></tr></table></figure></p>
@@ -204,7 +204,7 @@
   <h3 class="title">分类</h3>
   <ul class="entry">
   
-    <li><a href="/categories/Linux/">Linux</a><small>1</small></li>
+    <li><a href="/categories/Linux/">Linux</a><small>2</small></li>
   
     <li><a href="/categories/Python/">Python</a><small>1</small></li>
   
@@ -223,7 +223,7 @@
   
     <li><a href="/tags/IPC/">IPC</a><small>1</small></li>
   
-    <li><a href="/tags/Linux/">Linux</a><small>1</small></li>
+    <li><a href="/tags/Linux/">Linux</a><small>2</small></li>
   
     <li><a href="/tags/Pyro/">Pyro</a><small>1</small></li>
   
@@ -241,7 +241,7 @@
 <div class="widget tagcloud">
   <h3 class="title">标签云</h3>
   <div class="entry">
-    <a href="/tags/C/" style="font-size: NaNpx;">C</a><a href="/tags/GCC/" style="font-size: NaNpx;">GCC</a><a href="/tags/IPC/" style="font-size: NaNpx;">IPC</a><a href="/tags/Linux/" style="font-size: NaNpx;">Linux</a><a href="/tags/Pyro/" style="font-size: NaNpx;">Pyro</a><a href="/tags/Python/" style="font-size: NaNpx;">Python</a><a href="/tags/Segmentation-fault/" style="font-size: NaNpx;">Segmentation fault</a><a href="/tags/x86-64/" style="font-size: NaNpx;">x86_64</a>
+    <a href="/tags/C/" style="font-size: 10px;">C</a><a href="/tags/GCC/" style="font-size: 10px;">GCC</a><a href="/tags/IPC/" style="font-size: 10px;">IPC</a><a href="/tags/Linux/" style="font-size: 20px;">Linux</a><a href="/tags/Pyro/" style="font-size: 10px;">Pyro</a><a href="/tags/Python/" style="font-size: 10px;">Python</a><a href="/tags/Segmentation-fault/" style="font-size: 10px;">Segmentation fault</a><a href="/tags/x86-64/" style="font-size: 10px;">x86_64</a>
   </div>
 </div>
 
@@ -269,5 +269,6 @@
 })(jQuery);
 </script>
 
+<a href="https://github.com/weyou"><img style="position: absolute; top: 0; left: 0; border: 0;" src="https://camo.githubusercontent.com/121cd7cbdc3e4855075ea8b558508b91ac463ac2/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f6c6566745f677265656e5f3030373230302e706e67" alt="Fork me on GitHub" data-canonical-src="https://s3.amazonaws.com/github/ribbons/forkme_left_green_007200.png"></a>
 </body>
 </html>

@@ -4,7 +4,7 @@
   <subtitle><![CDATA[Weyou's Notes]]></subtitle>
   <link href="/atom.xml" rel="self"/>
   <link href="http://yoursite.com/"/>
-  <updated>2015-04-13T08:47:57.863Z</updated>
+  <updated>2015-04-20T06:59:42.950Z</updated>
   <id>http://yoursite.com/</id>
   
   <author>
@@ -15,11 +15,181 @@
   <generator uri="http://hexo.io/">Hexo</generator>
   
   <entry>
+    <title><![CDATA[Linux init系统学习笔记]]></title>
+    <link href="http://yoursite.com/2014/08/30/Linux%20init%E7%B3%BB%E7%BB%9F%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/"/>
+    <id>http://yoursite.com/2014/08/30/Linux init系统学习笔记/</id>
+    <published>2014-08-30T06:57:45.000Z</published>
+    <updated>2015-04-20T06:59:42.950Z</updated>
+    <content type="html"><![CDATA[<h2 id="什么是init系统">什么是init系统</h2><p>Linux的启动过程大致如下:<br>BIOS -&gt; Boot Loader -&gt; Load Kernel -&gt; Kernel初始化 -&gt; 创建pid=1的init进程<br><a id="more"></a><br>init进程有以下特点：</p>
+<ul>
+<li>以守护进程方式存在，PID是1，是所有其他进程的祖先</li>
+<li>负责组织和运行许多独立的相关的初始化化工作 </li>
+<li>按照预设的运行模式（runlevel）启动shell或者X图形界面</li>
+</ul>
+<p>init进程和与其相关的工作过程被称为<strong>init系统</strong>。</p>
+<h2 id="init系统的主要分类">init系统的主要分类</h2><p>传统的init: BSDinit, Sysvinit<br>现代的init: UpStart, Systemd</p>
+<h2 id="BSDinit">BSDinit</h2><p>运行<strong>/etc/rc</strong>，然后启动基于文本模式的终端(getty)或者基于图形界面的终端(窗口系统，如X)， 所有的工作都在rc中进行。</p>
+<p>BSDinit简单且易于手动编辑。但如果第三方软件需要在启动过程执行它自身的初始化脚本，它必须修改已经存在的启动脚本，一旦这种过程中有一个小错误，都将导致系统无法正常启动。</p>
+<p>现代的BSD风格的init使用rc.local和rc.d中的子脚本来降低系统无法启动的风险。</p>
+<h2 id="Sysvinit">Sysvinit</h2><p>这种init系统被广泛使用，源于System V系列的UNIX， 是System V相兼容的，称为sysvinit。<br>Sysvinit读取/etc/inittab 文件，获取运行模式及工作范围，然后利用<em>Shell脚本</em>，<em>文件命名规则</em>和<em>软链接</em>来实现不同的runlevel。<br>通常会有 8 种运行模式，即运行模式 0 到 6 和 S 或者 s。  每个发行版都有不同的定义，但 0， 1， 6的定义通常是一致的：</p>
+<ul>
+<li>0 关机</li>
+<li>1 单用户模式</li>
+<li>6 重启</li>
+</ul>
+<p>可以用一下命令来获取当前的运行模式<br><figure class="highlight elixir"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="variable">$ </span>runlevel</span><br><span class="line"><span class="variable">$ </span>who -r</span><br></pre></td></tr></table></figure></p>
+<h3 id="工作流程">工作流程</h3><p>/etc/rc.d/rc.sysinit  -&gt; /etc/rc.d/rc 和/etc/rc.d/rcX.d/ -&gt; /etc/rc.d/rc.local </p>
+<p>首先执行<strong>rc.sysinit</strong>，主要有完成以下工作。</p>
+<ul>
+<li>激活 udev 和 selinux</li>
+<li>设置定义在/etc/sysctl.conf 中的内核参数</li>
+<li>设置系统时钟</li>
+<li>加载keymaps</li>
+<li>使能交换分区</li>
+<li>设置主机名(hostname)</li>
+<li>根分区检查和remount</li>
+<li>激活 RAID 和 LVM 设备</li>
+<li>开启磁盘配额</li>
+<li>检查并挂载所有文件系统</li>
+<li>清除过期的 locks 和 PID 文件</li>
+</ul>
+<p>然后执行<strong>/etc/rc.d/rc</strong>脚本， rc脚本根据runlevel去<strong>/etc/rc.d/rcX.d</strong>（(X 代表运行级别 0-6）去找到所有S打头的启动脚本按照S后面的数字顺序执行。这些脚本除了<strong>SXXlocal</strong>以外，其他都是/etc/init.d下面服务进程的启动脚本的软链接。</p>
+<p><strong>SXXlocal</strong>是<strong>/etc/rc.d/rc.local</strong>脚本的的软链接。S后面的数字XX比较靠后，所以一般在所有脚本的最后运行。之所以单独提出来，是因为通常一些用户希望跟随系统启动的程序可以在这里加载。</p>
+<p>如果是GUI模式的runlevel，最后还要启动GUI管理器</p>
+<ul>
+<li>X Display Manager</li>
+</ul>
+<p>当<strong>关闭系统</strong>的时候，Sysvinit也会执行<strong>/etc/rc.d/rcX.d</strong>下面的脚本，与启动不同的是，关闭的时候执行的是K打头的启动脚本， 同样K后面的数字决定了执行的顺序。</p>
+<h3 id="管理命令">管理命令</h3><ul>
+<li>service <name> start</name></li>
+<li>service <name> stop</name></li>
+<li>service <name> restart</name></li>
+<li>service <name> reload</name></li>
+</ul>
+<h3 id="总结">总结</h3><p>概念简单，直接用shell脚本，不需要学习特殊语法。顺序执行所以易于排错。但是缺点也是依赖于脚本，导致启动比较慢，已不适应移动设备快速启动的需求。</p>
+<h2 id="UpStart">UpStart</h2><p>Sysvinit适合用在服务器环境， 服务器环境不会频繁重启，也不会频繁增减外设。<br>而在Linux2.6时代，桌面系统开始成熟，频繁的重启则使人们对重启的时间有了要求，外设的热插拔导致只能顺序执行的Sysvinit无法胜任。<br>而基于事件驱动模型的UpStart则很好的解决了这些问题。UpStart 可以：</p>
+<ul>
+<li>更快地启动系统</li>
+<li>当新硬件被发现时动态启动服务</li>
+<li>硬件被拔除时动态停止服务</li>
+</ul>
+<p>UpStart成为Ubuntu默认的init系统。</p>
+<h3 id="基本概念">基本概念</h3><p>首先要理解两个概念： <strong>Job</strong>和<strong>Event</strong>。 每个Job 都等待一个或多个事件，一旦事件发生，UpStart就触发该 job 完成相应的工作</p>
+<h4 id="Job">Job</h4><p>Job是一个工作单元，一个任务或者一个服务。可以理解为 sysvinit 中的一个服务脚本。有三种类型</p>
+<ul>
+<li>task job<br>一定时间内会执行完毕的任务。</li>
+<li>service job<br>后台服务进程，一般是不会退出的。</li>
+<li>abstract job<br>UpStart内部使用，不需要关心。</li>
+</ul>
+<p>还可以从Job的工作范围分为2类：</p>
+<ul>
+<li>System Job<br>系统初始化使用的Job</li>
+<li>Session Job<br>用户会话初始化使用的Job</li>
+</ul>
+<p>|| 状态名  || 含义 ||<br>| Waiting   |  初始状态 |<br>| Starting    |  Job 即将开始 |<br>| pre-start    |  执行 pre-start 段，即任务开始前应该完成的工作 |<br>| Spawned    |  准备执行 script 或者 exec 段 |<br>| post-start  |    执行 post-start 动作 |<br>| Running     | 运行阶段 |<br>| pre-stop    |  执行 pre-stop 段 |<br>| Stopping    |  interim state set after pre-stop section processed |<br>| Killed      | 任务即将被停止 |<br>| post-stop     | 执行 post-stop 段  |</p>
+<h6 id="Job的状态转换">Job的状态转换</h6><p><img src="http://7ximrm.com1.z0.glb.clouddn.com/twocupstart-states.png" alt="Job的状态转换"></p>
+<ul>
+<li>菱形的节点代表了静止的状态</li>
+<li>椭圆形的节点代表的状态中可以执行一些操作</li>
+<li>矩形的节点代表了进入下一个状态之前将会发出的Event</li>
+<li>所有的节点根据Event发出的时间阶段被划分成了4个虚拟状态(Starting/Started/Stopping/Stopped)来反应</li>
+<li>从节点出发的绿色箭头导向的目标为start</li>
+<li>从节点出发的红色箭头导向的目标为stop</li>
+</ul>
+<p>当工作的状态即将发生变化的时候，UpStart进程会发出相应的事件（event）<br>其中有四个状态会引起UpStart进程发送相应的事件，表明该Job的相应变化：</p>
+<ul>
+<li>Starting</li>
+<li>Started</li>
+<li>Stopping</li>
+<li>Stopped</li>
+</ul>
+<p>而其它的状态变化不会发出事件</p>
+<h4 id="Event">Event</h4><p>事件以系统通知消息的形式存在。 当一个Event发生时，所有的Upstart组件都会得到通知。</p>
+<p>Event有三种类型：<br>|| Event || Synchronized|| Result Available ||<br>| Signals | No | No |<br>| Methods | Yes | Yes |<br>| Hooks | Yes | No |</p>
+<p>init支持的Event各个发行版都有不同的定义， 可以用以下命令来查看：<br><figure class="highlight matlab"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">man <span class="number">7</span> upstart-<span class="keyword">events</span></span><br></pre></td></tr></table></figure></p>
+<h3 id="工作流程-1">工作流程</h3><p>系统初始化时，init 进程开始运行，init进程自身会发出不同的Event，这些最初的事件会触发一些Job运行。每个Job运行过程中会释放不同的Event，这些Event又将触发新的Job运行。如此反复，直到整个系统正常运行起来。</p>
+<h5 id="Job的配置文件">Job的配置文件</h5><p>配置文件存在在/etc/init下面， 有点类似于Sysvinit的/etc/init.d<br>配置文件定义了一个Job，可以由以下几个字段组成：</p>
+<ul>
+<li>author/description<br> 这两个字段顾名思义，无需赘言</li>
+<li>expect<br>用于告知UpStart这个任务会fork几次， UpStart以此来记录正真的PID用于任务的管理<ul>
+<li>expect fork：表示进程只会 fork 一次</li>
+<li>expect daemonize：表示进程会 fork 两次<br>这个字段很重要， 如果设置错误，可能会影响到Job的停止功能。</li>
+</ul>
+</li>
+<li><p>script/exec<br>Job的具体内容，如果是运行一段shell脚本， 就用script</p>
+<figure class="highlight applescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">script</span></span><br><span class="line">&lt;...shell <span class="keyword">script</span>...&gt;</span><br><span class="line"><span class="keyword">end</span> <span class="keyword">script</span></span><br></pre></td></tr></table></figure>
+<p>如果是运行一个程序</p>
+<figure class="highlight r"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">  exec &lt;command&gt; &lt;args&gt;<span class="keyword">...</span></span><br><span class="line">  ``` </span><br><span class="line">- start on</span><br><span class="line">  定义了触发Job的所有事件，语法：</span><br><span class="line">  ```start on EVENT [[KEY=]VALUE]<span class="keyword">...</span> [and|or...]</span><br></pre></td></tr></table></figure>
+<p>用 KEY=VALUE 来表示额外的条件，一般是某个环境变量(KEY)和特定值(VALUE)进行比较。比如：</p>
+<figure class="highlight applescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">start <span class="function_start"><span class="keyword">on</span></span> (<span class="keyword">local</span>-filesystems <span class="keyword">and</span> net-device-up IFACE!=lo)</span><br></pre></td></tr></table></figure>
+<p>如果只有一个变量，或者变量的顺序已知，则 KEY 可以省略。比如：</p>
+<figure class="highlight apache"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">start</span> <span class="literal">on</span> runlevel<span class="sqbracket"> [2345]</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>stop on<br>类似于start on， 定义了需要Job停止的所有事件</p>
+</li>
+</ul>
+<h5 id="UpStart启动过程">UpStart启动过程</h5><p><img src="http://7ximrm.com1.z0.glb.clouddn.com/twocimage004[1].png" alt="Job的状态转换"><br>UpStart并没有运行模式的概念，但是为了兼容原有的软件， UpStart用Job模拟了SysV的运行模式, 可以参看/etc/init/rc-sysinit.conf和/etc/init/rc.conf.<br>这就是为什么Ubuntu下定义在/etc/init.d的服务还是可以正常工作的原因</p>
+<h3 id="管理命令-1">管理命令</h3><p>最主要的命令是<strong>initctl</strong>, 常用的简化命令有：</p>
+<ul>
+<li>start <job></job></li>
+<li>stop <job></job></li>
+<li>restart <job></job></li>
+<li>reload <job></job></li>
+</ul>
+<p>这些命令都是<strong>initctl</strong>命令的软链接。</p>
+<p>此外还可以使用 initctl 的 emit 命令从命令行发送一个事件用于排错。<br><figure class="highlight mel"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">initctl <span class="keyword">emit</span> &lt;<span class="keyword">event</span>&gt;</span><br></pre></td></tr></table></figure></p>
+<h3 id="总结-1">总结</h3><p>并发进程让启动时间更短，支持事件驱动服务的启停，兼容现有的Sysvinit的服务。</p>
+<h2 id="Systemd">Systemd</h2><p>Systemd是后起之秀， 和UpStart一样, Systemd提供了和Sysvinit以及LSB initscripts兼容的特性。不同的是Systemd进一步提高了服务启动的并发性。</p>
+<h3 id="工作流程-2">工作流程</h3><p>先看一下UpStart 对 Sysvinit的改进</p>
+<p><img src="http://7ximrm.com1.z0.glb.clouddn.com/twocimage003[1].jpg" alt="UpStart 对 SysVinit 的改进"><br>*原文章配图有误， 已更正</p>
+<ul>
+<li>C和D依赖于B， B依赖于A</li>
+<li>F依赖于E</li>
+<li>G不依赖任何服务</li>
+</ul>
+<p>可以看到Sysvinit中， 没有依赖关系的服务也必须顺序启动，浪费了很多启动时间。<br>而对于UpStart来说，有依赖关系的服务必须先启动，只有不相关的服务才可以并行启动， 比如A，E，G可以同时启动，C和D也是同时启动。</p>
+<p>在看一下Systemd对Sysvinit的改进<br><img src="http://7ximrm.com1.z0.glb.clouddn.com/twocimage005.jpg" alt="Systemd对 SysVinit 的改进"><br>可以看到Systemd几乎所有的服务都可以并行启动，即使他们之间有依赖关系。这是怎么做到的呢？</p>
+<p>Systemd可以用以下方式来解除依赖：</p>
+<ul>
+<li><p>Socket activation<br>如果服务A用套接字S1提供自己的服务，往常的方式是B必须等到A启动以后才能连接套接字S1. 现在Systemd可以先单独创建一个套接字S1，然后让A和B同时启动，如果B启动完成后，A还没有完成，B发向S1的请求会被缓存，直到A完成启动后接管套接字S1的处理。 这种解除依赖的方式类似于<code>inetd</code>，利用了父子进程之间套接字可以继承的原理。</p>
+</li>
+<li><p>D-Bus activation<br>与Socket activation类似，只不过Socke换成D-Bus</p>
+</li>
+<li><p>autofs<br>文件系统的挂载非常耗时，Systemd借鉴了autofs的设计思路。即使文件系统挂载点未准备就绪， 那些依赖于这个挂载点的服务也可以并发启动，只不过<code>open()</code>系统调用会被挂起，然后等待真正的挂载操作完成。 之后让<code>open()</code>操作返回。</p>
+<blockquote>
+<p>当然对于”/“根目录的依赖实际上一定还是要串行执行，因为 systemd 自己也存放在/之下，必须等待系统根目录挂载检查好。</p>
+</blockquote>
+</li>
+</ul>
+<p>如果以上3种手段解决不了的依赖， Systemd也只能让它们顺序执行了。</p>
+<h5 id="Systemd的特点">Systemd的特点</h5><ul>
+<li>按需启动，只有在正真用到的时候才启动相关服务</li>
+<li>使用cgroup来跟踪管理进程，免除了UpStart设定fork次数的困扰</li>
+<li>启动挂载点和自动挂载的管理</li>
+<li>事务性依赖关系管理</li>
+<li>系统快照和恢复</li>
+<li>日志服务</li>
+</ul>
+<h3 id="Systemd的争议">Systemd的争议</h3><p>Systemd在Linux社区一直饱受争议，主要是因为Systemd接管了原本是inetd, syslog, crond, udev等独立进程负责的事情。 与<em>Unix的哲学</em>（只做一件事，并且把它做好）相违背。并且因为接管的事情过多， 导致对别的平台（比如FreeBSD）无法支持。</p>
+<p>References:<br><a href="http://zh.wikipedia.org/zh-cn/Init" target="_blank" rel="external">维基百科init词条</a><br><a href="http://upstart.ubuntu.com" target="_blank" rel="external">UpStart Wiki</a><br><a href="http://www.ibm.com/developerworks/cn/linux/1407_liuming_init1/index.html" target="_blank" rel="external">浅析 Linux 初始化 init 系统</a></p>
+]]></content>
+    <summary type="html">
+    <![CDATA[<h2 id="什么是init系统">什么是init系统</h2><p>Linux的启动过程大致如下:<br>BIOS -&gt; Boot Loader -&gt; Load Kernel -&gt; Kernel初始化 -&gt; 创建pid=1的init进程<br>]]>
+    
+    </summary>
+    
+      <category term="Linux" scheme="http://yoursite.com/tags/Linux/"/>
+    
+      <category term="Linux" scheme="http://yoursite.com/categories/Linux/"/>
+    
+  </entry>
+  
+  <entry>
     <title><![CDATA[Pyro4学习笔记]]></title>
     <link href="http://yoursite.com/2014/01/10/Pyro4%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/"/>
     <id>http://yoursite.com/2014/01/10/Pyro4学习笔记/</id>
     <published>2014-01-10T09:32:27.000Z</published>
-    <updated>2015-04-13T08:47:57.863Z</updated>
+    <updated>2015-04-14T16:23:13.477Z</updated>
     <content type="html"><![CDATA[<p> <a href="https://pythonhosted.org/Pyro4/" target="_blank" rel="external">Pyro4</a>是一个能够通过网络来调用远程Python对象的库， 因为是纯Python实现的，具有良好的跨平台的特性， 可以用于分布式计算。这个库同时支持Python2与Python3。<br><a id="more"></a></p>
 <h2 id="为什么要使用Pyro">为什么要使用Pyro</h2><p>传统IPC机制如SOAP, JSON-RPC, xmlrpc等只能支持基本的数据类型，而Pyro的优势在于支持所有的Python数据类型。比如dict里的key如果是非字符串类型的， 传统IPC机制就没法处理了。</p>
 <figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="prompt">&gt;&gt;&gt; </span>a = &#123;<span class="number">1</span>: <span class="string">'a'</span>, <span class="number">2</span>: <span class="string">'b'</span>, <span class="number">3</span>: <span class="string">'c'</span>&#125;</span><br></pre></td></tr></table></figure>
@@ -45,16 +215,16 @@
 <p> 这个uri就是上面的服务端例子输出的uri， 可以直接使用。</p>
 </li>
 <li><p>使用对象名称去Pyro name server进行查询</p>
-<p> 方式1的uri包含了很多个部分，它们唯一标识了这个Pyro的对象，但是很多时候我们并不关心这个对象服务被部署在哪个Host， 哪个Port。 我们希望只要知道这个对象的名字就可以直接调用它。 这有点类似于即插即用的概念， 就像我们访问google的时候，只要记住了google的域名， 不知道他的IP地址也可以访问， 哪怕有一天google的实际IP改变了， 我们也不需要去关心。</p>
+<p>方式1的uri包含了很多个部分，它们唯一标识了这个Pyro的对象，但是很多时候我们并不关心这个对象服务被部署在哪个Host， 哪个Port。 我们希望只要知道这个对象的名字就可以直接调用它。 这有点类似于即插即用的概念， 就像我们访问google的时候，只要记住了google的域名， 不知道他的IP地址也可以访问， 哪怕有一天google的实际IP改变了， 我们也不需要去关心。</p>
 <p>很显然， 我们需要一个名称服务器（name server）来帮助我们完成这件事， 听起来很像域名服务器的样子。好吧， 这玩意完全可以看做是一个简化版的域名服务器。做个类比的话， 上面的例子中daemon.register函数返回的uri就是相当于ip地址。 对象名称就相当于域名。只要知道了域名就可以通过名称服务器查询到对象的地址uri。所幸的是Pyro已经内置了一个name server. 当服务端生成一个Pyro对象时， 同时把这个对象注册到name server上。</p>
 <figure class="highlight nix"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="variable">hello =</span> Hello()</span><br><span class="line"><span class="variable">daemon=</span>Pyro4.Daemon(<span class="variable">host=</span>'server-desktop', <span class="variable">port=</span><span class="number">9999</span>)     <span class="comment"># 创建一个Pyro的Daemon, 其中server-desktop是server</span></span><br><span class="line"><span class="variable">uri=</span>daemon.register(hello)                 <span class="comment"># 把hello对象注册到Pyro的Daemon</span></span><br><span class="line"><span class="variable">ns=</span>Pyro4.locateNS()                        <span class="comment"># 创建name server对象</span></span><br><span class="line">ns.register(<span class="string">"hello.object.test"</span>, uri)      <span class="comment"># 把uri注册到name server并且起一个便于记忆的名字hello.object.test</span></span><br><span class="line">daemon.requestLoop()                       <span class="comment"># 启动Daemon并等待客户端的调用指令。</span></span><br></pre></td></tr></table></figure>
 <p>客户端可以通过name server来查询到名字为<code>hello.object.test</code>的真正地址。</p>
- <figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> Pyro4</span><br><span class="line">nameserver = Pyro4.locateNS()</span><br><span class="line">uri_string = nameserver.lookup(<span class="string">"hello.object.test"</span>)   <span class="comment"># 查询到hello.object.test的uri</span></span><br></pre></td></tr></table></figure>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> Pyro4</span><br><span class="line">nameserver = Pyro4.locateNS()</span><br><span class="line">uri_string = nameserver.lookup(<span class="string">"hello.object.test"</span>)   <span class="comment"># 查询到hello.object.test的uri</span></span><br></pre></td></tr></table></figure>
 </li>
 <li><p>直接使用对象名字，让Pyro自动查询。</p>
-<p> 就如同访问一个网站既可以用ip访问也可以用域名访问一样，Pyro对象也可以通过指定对象名字来直接访问</p>
- <figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">uri_string = <span class="string">"PYRONAME:hello.object.test"</span></span><br></pre></td></tr></table></figure>
-<p> 有了这种简单的方式，还有什么理由还要去用第二种方式呢？ 好吧， 如果只采用默认的查询，确实没有必要用方式2。因为方式2就是方式3的内部实现。</p>
+<p>就如同访问一个网站既可以用ip访问也可以用域名访问一样，Pyro对象也可以通过指定对象名字来直接访问</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">uri_string = <span class="string">"PYRONAME:hello.object.test"</span></span><br></pre></td></tr></table></figure>
+<p>有了这种简单的方式，还有什么理由还要去用第二种方式呢？ 好吧， 如果只采用默认的查询，确实没有必要用方式2。因为方式2就是方式3的内部实现。</p>
 </li>
 </ol>
 <p>有了远程对象的uri， 就可以创建Pyro对象了<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="prompt">&gt;&gt;&gt; </span>obj = Pyro4.Proxy(uri_string )</span><br></pre></td></tr></table></figure></p>
