@@ -48,6 +48,10 @@ h2 {
 h3 {
   font-size: 1.3em;
 }
+h4 {
+  font-size: 1.1em;
+  text-decoration: underline;
+}
 a {
   text-decoration: none;
   color: #258fb8;
@@ -800,4 +804,19 @@ pre .clojure .title {
 }
 pre .deletion {
   color: #dc322f;
+}
+.entry>table {
+  border-collapse: collapse;
+  border: 1px solid #ddd;
+}
+.entry>table th,
+.entry>table td {
+  padding: 5px 15px;
+  margin: 0 0 0 0;
+}
+.entry>table thead {
+  border-bottom: 1px solid #ddd;
+}
+.entry>table tr:nth-child(even) {
+  background: #fcfcfc;
 }
