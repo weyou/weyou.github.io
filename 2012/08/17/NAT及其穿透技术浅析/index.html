@@ -1,0 +1,432 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>NAT及其穿透技术浅析 | { theWayOfCoding }</title>
+  <meta name="author" content="Kelvin You">
+  
+  <meta name="description" content="NAT(Network Address Translation) 网络地址转换技术被普遍用于有多台主机但只有一个IP地址能访问Internet的网络中。它是作为一种IPv4地址短缺的临时解决方案而产生的，但随着家用WiFi路由器的普及而变的流行起来。">
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="NAT及其穿透技术浅析"/>
+  <meta property="og:site_name" content="{ theWayOfCoding }"/>
+
+  
+    <meta property="og:image" content="undefined"/>
+  
+
+  <link href="/favicon.png" rel="icon">
+  <link rel="alternate" href="/atom.xml" title="{ theWayOfCoding }" type="application/atom+xml">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+  
+<script type="text/javascript">
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-60682241-1']);
+  
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+</script>
+
+
+</head>
+
+
+<body>
+  <header id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">{ theWayOfCoding }</a></h1>
+  <h2><a href="/">Weyou&#39;s Notes</a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+      <li><a href="/about">About</a></li>
+    
+      <li><a href="/atom.xml">RSS</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div></header>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2012-08-17T07:14:34.000Z"><a href="/2012/08/17/NAT及其穿透技术浅析/">2012-08-17</a></time>
+      
+      
+  
+    <h1 class="title">NAT及其穿透技术浅析</h1>
+  
+
+    </header>
+    <div class="entry">
+      
+        <p>NAT(Network Address Translation) 网络地址转换技术被普遍用于有多台主机但只有一个IP地址能访问Internet的网络中。它是作为一种IPv4地址短缺的临时解决方案而产生的，但随着家用WiFi路由器的普及而变的流行起来。<br><a id="more"></a><br>在我看来，NAT存在的意义不只是解决IP地址的短缺，还与运营商的计费模式有相当大的关系。即使在IP地址数目多如恒河沙数的IPv6时代，如果运营商只按IP地址数目来计费，NAT技术依然不会消亡。</p>
+<p>NAT将网络分为本地网络和外部网络两个部分，内部本地网络(LAN)和外部广域网络(WAN)。内部网络是一个私有的网络， 任何内网主机的IP地址都不会传输到外部网络。内网主机发送到外网主机的数据包，源地址和端口会被NAT修改，实际上NAT充当了内部网络的代理功能。</p>
+<p>与翻译语言用的词典类似，NAT也需要维护一张NAT的映射表。这张表记载了内部IP地址/端口与外部IP地址/端口的映射。除静态NAT之外，与词典有所不同的是，NAT的映射可以是动态建立的， 建立的规则根据NAT的类型有所不同（详见下文）。 </p>
+<p>NAT映射的生命期是与NAT Session保持一致的。一个NAT映射建立绑定到移除的这一段时间称之为NAT Session。 NAT映射的移除是由超时机制触发的，如果规定的一段时间之内，没有符合某条映射的数据包通过， 那么这个NAT映射就会从表格中移除。从而释放外部的地址、端口等资源用来建立新的映射。对于TCP来说， TCP Session的结束也会触发NAT映射的移除。</p>
+<blockquote>
+<p>以下图例中矩形方块表示一个IP地址，半圆表示一个端口。</p>
+</blockquote>
+<h1 id="静态NAT">静态NAT</h1><p>这种NAT只是简单的网络地址转换，并不涉及到端口的映射。NAT表一般是手工配置，每一项都包含内网地址和外网地址的一个映射，如下表（Z为外部IP地址）</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:center">Internal IP</th>
+<th style="text-align:center">External IP</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">A</td>
+<td style="text-align:center">Z1</td>
+</tr>
+<tr>
+<td style="text-align:center">B</td>
+<td style="text-align:center">Z2</td>
+</tr>
+<tr>
+<td style="text-align:center">C</td>
+<td style="text-align:center">Z3</td>
+</tr>
+<tr>
+<td style="text-align:center">…</td>
+<td style="text-align:center">…</td>
+</tr>
+</tbody>
+</table>
+<p><img src="http://7ximrm.com1.z0.glb.clouddn.com/twocnat-static-dynamic.png-watermark" alt="static/dynamic nat"></p>
+<p>一个内部IP地址要与外部通信，经过NAT之后，数据包的源地址会被修改为与之对应的一个外部IP地址.  如果有响应的数据包返回， 经过NAT之后， 响应包的目的IP地址会被修改为原来的内部地址IP。因为这些映射是一一对应的，外部网的​主机也可以直接与内网的主机通信。</p>
+<p><img src="http://7ximrm.com1.z0.glb.clouddn.com/twocnat-data-flow.png-watermark" alt="nat-data-flow"></p>
+<p>显然，静态NAT并没有起到节省外部IP地址的作用。</p>
+<h1 id="动态NAT">动态NAT</h1><p>NAT表的结构与静态NAT完全相同， 区别仅在于NAT映射是动态建立的。NAT会维护一个用于外部端口的IP地址池。 每当有内网主机向外部发出访问请求数据包时，这个内网主机的IP地址就会自动分配到一个外部IP地址与其对应，这样一个NAT映射就建立起来了。之后一段时间内所有相同主机发出的数据包都会根据这个映射，将源IP地址转换到相同的外部IP地址与外部网络的主机通信。这样可以达到一定程度的节省外部IP地址的目的。 </p>
+<p>动态NAT的缺点是一个内网主机对应的外部地址不是固定的，所以外网主机在知道这个映射的外部IP地址之前，是没有办法主动和内网主机进行通信的。</p>
+<h1 id="网络地址端口转换_(NAPT)">网络地址端口转换 (NAPT)</h1><p>上述<strong>静态NAT</strong>和<strong>动态NAT</strong>才是货真价实的NAT。 但一个显而易见的缺点是外部IP地址是有限的，在同一时间能访问外部网络的内网主机数量等同于外部IP地址的数量。如果内网主机数量超过外部IP地址的数目，要维持所有内网主机与外界的通信，需要满足下面2个条件：</p>
+<ul>
+<li>NAT表能够动态更新</li>
+<li>内网主机交替与外界通信</li>
+</ul>
+<p><strong>动态NAT</strong>已经解决了第一个条件， 但是第二个条件需要内网用户自己协调，这会严重影响用户体验。我们注意到当一个内网主机地址试图与外界通信时，65535个端口实际上只有几个端口是正真用于传输数据的，其余的都处于空闲状态。所以如果将NAT加入端口映射的条件，同一时间可以做的映射数量可以大幅增加， 这意味着，更多的内网主机可以同时与外部通信。 加入端口映射的NAT称之为NAPT(Network Address Port Translation)，即网络地址端口转换。现在讲到NAT绝大多数都指的都是NAPT。</p>
+<p>这是NAPT的NAT映射表的结构（Z为外部IP地址）</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:center">Internal IP/Port</th>
+<th style="text-align:center">External IP/Port</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">A/2001</td>
+<td style="text-align:center">Z/2001</td>
+</tr>
+<tr>
+<td style="text-align:center">B/2001</td>
+<td style="text-align:center">Z/2002</td>
+</tr>
+<tr>
+<td style="text-align:center">B/3000</td>
+<td style="text-align:center">Z/3000</td>
+</tr>
+<tr>
+<td style="text-align:center">…</td>
+<td style="text-align:center">…</td>
+</tr>
+</tbody>
+</table>
+<p>因为外部端口数量有65535个之多，所以通常只要一个外部IP就可以完成一个小型的内部网络访问外部网络的需求。 这也是家庭无线路由器能够让所有的内网主机，移动设备同时共享上网的原理。</p>
+<p><img src="http://7ximrm.com1.z0.glb.clouddn.com/twocnapt-data-flow.png-watermark" alt="static/dynamic nat"></p>
+<p>NAPT的NAT表项通常也是动态的建立的，根据<strong>NAT映射的建立规则</strong>， NAPT可以划分为2类</p>
+<ul>
+<li><a href="#cone-nat">锥型NAT (Cone NAT)</a></li>
+<li><a href="#symmetric-nat">对称型NAT (Symmetric NAT)</a></li>
+</ul>
+<p><a name="cone-nat"></a></p>
+<h2 id="锥型NAT_(Cone_NAT)">锥型NAT (Cone NAT)</h2><p>这种类型的NAT根据内部数据包的源IP地址和端口号，分配一个独立的外部端口。所有源于相同内部IP地址和端口的数据包都会映射到同一个外部地址和端口。</p>
+<p>锥型NAT根据目的地址或者<strong>目的主机的受限规则</strong>可以分为3类：</p>
+<ul>
+<li>完全锥型NAT (Full-cone NAT)</li>
+<li>地址受限的锥型NAT (Address Restricted NAT)</li>
+<li>端口受限的锥型NAT (Port Restricted NAT)</li>
+</ul>
+<h4 id="完全锥型NAT_(Full-cone_NAT)">完全锥型NAT (Full-cone NAT)</h4><p>一旦内网主机A/P通过NAT映射到了外部的地址Z和端口P’，任何外部的主机使用任何源端口都可以向Z/P’发起连接，数据都会被传回先前的内网主机A/P。<br><img src="http://7ximrm.com1.z0.glb.clouddn.com/twocnat-full-cone.png-watermark" alt="full cone nat"></p>
+<h4 id="地址受限的锥型NAT_(Address_Restricted_NAT)">地址受限的锥型NAT (Address Restricted NAT)</h4><p>一旦内网主机A/P通过NAT映射到了外部的地址Z和端口P’，只有A/P访问过的外部的主机才可以向Z/P’发起连接，并且可以使用任意的源端口，数据都会被传回先前的内网主机A/P。<br><img src="http://7ximrm.com1.z0.glb.clouddn.com/twocnat-cone-address.png-watermark" alt="address restricted nat"></p>
+<h4 id="端口受限的锥型NAT_(Port_Restricted_NAT)">端口受限的锥型NAT (Port Restricted NAT)</h4><p>一旦内网主机A/P通过NAT映射到了外部的地址Z和端口P’，只有A/P访问过的外部的主机才可以向Z/P’发起连接，并且源端口必须是A/P访问过的端口，数据都会被传回先前的内网主机A/P。这种类型的NAT隐含了地址受限的条件，还加上了端口限制。</p>
+<p>绝大部分家庭路由器使用的NAT都是这种类型的。<br><img src="http://7ximrm.com1.z0.glb.clouddn.com/twocnat-cone-port.png-watermark" alt="port restricted nat"></p>
+<p><a name="symmetric-nat"></a></p>
+<h1 id="对称型NAT_(Symmetric_NAT)">对称型NAT (Symmetric NAT)</h1><p>Cone类型的NAT的映射的建立只根据内部源IP和源端口来进行，而对称类型的NAT则会加入目的IP地址和目的端口的条件。<br><img src="http://7ximrm.com1.z0.glb.clouddn.com/twocnat-symmetric.png-watermark" alt="symmetric nat"><br>对于相同的内部IP地址和相同源端口发出的2个数据包，如果目的地址或者目的端口不同，Cone类型的NAT也会映射到相同的外部端口。 而对称类型的NAT则会映射到两个不同的外部端口。</p>
+<blockquote>
+<p>注意对称类型的NAT与Cone类型的划分是根据映射<strong>建立规则</strong>来确立的，而不是外网主机的<strong>受限规则 </strong>，这两个规则是独立的。</p>
+</blockquote>
+<p>对称型NAT的外网主机受限机制与<strong>端口受限的锥形NAT</strong>完全相同，不在赘述。</p>
+<p>对称型NAT的因其安全系数比较高，一般为企业所有采用。</p>
+<h1 id="应用程序网关ALG">应用程序网关ALG</h1><p>绝大多数的应用都可以顺利的通过NAPT访问外部服务， 但凡事总有特例，考虑下面两种情况：</p>
+<ul>
+<li>外网主机要求接收到的数据包使用特定的源端口， 但NAT的作用下映射端口不能保证跟源端口相同。比如，如果同时有两个内网主机发出的数据包具有相同的源端口，NAT将会把其中一个数据包的源端口映射到一个不同的外部端口用以区分他们。</li>
+<li>内网主机发出的数据包应用层数据带有内网的IP地址或者端口的信息， 这些信息会用于外网主机主动访问内网主机，比如FTP的Active模式。</li>
+</ul>
+<p>这样就影响了外部主机与内部主机的通信。这时候就要用到ALG(Application Gateway)应用层网关了， ALG机制实际上就是针对各种协议做特殊处理。</p>
+<ul>
+<li>对于第一种情况： 让NAT依然映射到相同的外部端口， 但是在内部建立这个应用专用的映射，根据具体的协议信息来决定响应数据包应该发送到哪一个内网主机。</li>
+<li>对于第二种情况： 分析协议，然后根据NAT映射修改应用层部分的IP地址和端口信息。</li>
+</ul>
+<p>常见的需要用到ALG的应用有RTSP，SIP，H.323, FTP, POP3, SMTP等。<br>随着互联网对数据安全性的重视，ALG分析不了加密的报文数据，而且对新的协议需要NAT设备升级来支持，所以ALG的局限性很大。</p>
+<h1 id="NAT穿透">NAT穿透</h1><p>在NAT的作用下，由于外网主机没有办法主动向内网主机发起连接，使得内网主机免受到外网的攻击，形成一个天然的防火墙。但是这也阻碍了外网对内网的正常访问。 于是就有了多种多样的NAT穿透机制。</p>
+<p>假设A，B为主机，S为辅助穿透用的具有外网地址的服务器， 现在主机B要访问主机A。<br>注意以下描述中<strong>有外网地址</strong>的情况也包含了<strong>静态NAT</strong>的情况，Full-cone NAT包含了Dynamic NAT的情况。</p>
+<ol>
+<li><p>A处于外网有外网地址<br> 无论B在NAT内网还是有外网地址，B都能直接访问到A。<br> （这种情况不属于NAT穿透的讨论范围，放到这里仅作为对比）</p>
+</li>
+<li><p>A处于NAT类型为Full-cone的内网中<br> A需要定时发heartbeat到S,  使S获知A的NAT外部地址。</p>
+<p>无论B在NAT内网还是有外网地址，B向S发出穿透请求，S将A的NAT外部地址和端口告诉B，因为A不限制来源地址和来源端口，然后B就能直接访问到A。</p>
+</li>
+<li><p>A处于NAT类型为Address-restricted的内网中<br> A需要定时发heartbeat到S， 使S获知A的NAT外部地址。</p>
+<p> 3.1. 若B有外网地址或者为Full-cone。B向S发出穿透请求，S转发B的地址到A， A直接访问B的地址建立起NAT映射，B因为不限制来源地址和端口，所以能收到A的数据包，自然就能获知A的外网地址和端口，B当然也可以访问A了。</p>
+<p> 3.2. 若B处于NAT类型为Address-restricted的内网中。B向S发出穿透请求， S转发B的外网地址/端口到A， S也转发A的外网地址/端口到B，然后A, B各自向对方的外网地址/端口发一个访问请求（源端口要与heartbeat通信端口一致，这样可以保证映射到的外网端口应该也一致），虽然访问不成功，却分别取消了相互的地址/端口限制。至此A和B就可以互访了，而且无论谁先访问谁，各自的源端口都可以是任意端口。</p>
+<p> 3.3. 若B处于NAT类型为Port-restricted的内网中。B向S发出穿透请求， S转发B的外网地址/端口到A， S也转发A的外网地址/端口到B，然后A, B各自向对方的外网地址/端口发一个访问请求（源端口要与heartbeat通信端口一致，这样可以保证映射到的外网端口应该也一致），虽然访问不成功，却分别取消了相互的地址/端口限制。至此A和B就可以互访了。注意因为B是限制端口的，A先访问B的话，源端口必须和heartbeat通信端口一致。 而A是不限制端口的，所以B先访问A的话，可以用任意源端口。</p>
+<p> 3.4. 若B处于NAT类型为Symmetric的内网中。B向S发出穿透请求， S转发B的外网地址/端口到A， S也转发A的外网地址/端口到B，然后A先向B的外网地址/端口发一个访问请求（源端口要与heartbeat通信端口一致，这样可以保证映射到的外网端口应该也一致），虽然访问不成功，却取消了对B的地址限制。至此B就可以访问A了。 </p>
+<blockquote>
+<p>与上述3.2, 3.3情况的唯一不同的是这里A无法先主动访问B，因为B的外网端口无法知道。若只需要B主动访问A，上述两种情况也可以统一用这种方式解决.</p>
+</blockquote>
+</li>
+<li><p>A处于NAT类型为Port-restricted的内网中<br> A需要定时发heartbeat到S， 使S获知A的NAT外部地址。</p>
+<p> 4.1. 若B有外网地址或者为Full-cone。B向S发出穿透请求，S转发B的地址到A， A直接访问B的地址建立起NAT映射，B因为不限制来源地址和端口，所以能收到A的数据包，自然就能获知A的外网地址和端口，B当然也可以访问A了。(同3.1)</p>
+<p> 4.2. 若B处于NAT类型为Address-restricted的内网中。B向S发出穿透请求， S转发B的外网地址/端口到A， S也转发A的外网地址/端口到B，然后A, B各自向对方的外网地址/端口发一个访问请求（源端口要与heartbeat通信端口一致，这样可以保证映射到的外网端口应该也一致），虽然访问不成功，却分别取消了相互的地址/端口限制。至此A和B就可以互访了，注意因为A是限制端口的，B先访问A的话，源端口必须和heartbeat通信端口一致。 而B是不限制端口的，所以A先访问B的话，可以用任意源端口。（同3.3)</p>
+<p> 4.3. 若B处于NAT类型为Port-restricted的内网中。B向S发出穿透请求， S转发B的外网地址/端口到A， S也转发A的外网地址/端口到B，然后A, B各自向对方的外网地址/端口发一个访问请求（源端口要与heartbeat通信端口一致，这样可以保证映射到的外网端口应该也一致），虽然访问不成功，却分别取消了相互的地址/端口限制。至此A和B就可以互访了。注意因为A, B都是限制端口的，相互访问的源端口都必须和各自的heartbeat通信端口一致。 </p>
+<p> 4.4. 若B处于NAT类型为Symmetric的内网中。S转发A的外网地址/端口到B， B向A的外网地址/端口发一个访问请求, 但是Symmetric会对不同的目的地址/端口改变外网端口号，这时候B的外网端口是能不确定的（一定和heartbeat通信端口不同），而A又需要B的<strong>新</strong>的外网端口来解除对B的端口限制，这里就产生了一个死锁。解决的方式基本靠<em>猜</em>B的外网端口号，比如+1。</p>
+</li>
+<li><p>A处于NAT类型为Symmetric的内网中</p>
+<p> 5.1. 若B有外网地址或者为Full-cone。B向S发出穿透请求，S转发B的地址到A， A直接访问B的地址建立起NAT映射，B因为不限制来源地址和端口，所以能收到A的数据包，自然就能获知A的外网地址和端口，B当然也可以访问A了。(同3.1)</p>
+<p> 5.2. 若B处于NAT类型为Address-restricted的内网中。B向S发出穿透请求， S转发A的外网地址/端口到B， S也转发B的外网地址/端口到A，然后B先向A的外网地址/端口发一个访问请求（源端口要与heartbeat通信端口一致，这样可以保证映射到的外网端口应该也一致），虽然访问不成功，却取消了对A的地址限制。至此A就可以访问B了, B就可以知道A的新的外网端口，自然也能访问A了。 （同3.4）</p>
+<p> 5.3. <a name="tranversal-53"></a>若B处于NAT类型为Port-restricted的内网中。S转发A的外网地址/端口到B， A向B的外网地址/端口发一个访问请求, 但是Symmetric会对不同的目的地址/端口改变外网端口号，这时候A的外网端口是能不确定的（一定和heartbeat通信端口不同），而B又需要A的<strong>新</strong>的外网端口来解除对A的端口限制，这里就产生了一个死锁。解决的方式基本靠<em>猜</em>A的外网端口号，比如+1。（同4.4）</p>
+<p> 5.4. <a name="tranversal-54"></a>若B处于NAT类型为Symmetric的内网中。双方都不知道对方的新端口，<strong>无法直接通信</strong>。所有的数据只能通过有外网地址的服务器中转，开销大，效率低下（见TURN部分）。</p>
+</li>
+</ol>
+<p>尽管TCP也可以用来做NAT穿透，由于NAT穿透很多情况只需要发一个数据包来解除端口地址的限制，实际应用中使用无连接的UDP更加方便。</p>
+<p>可以看到NAT穿透实现起来还是比较困难的，最方便的是让应用可以有一个外网地址可以直接访问。所以如果NAT路由器支持UPnP，NAT-PMP, PCP等协议的话，应用程序可以对需要提供连接服务的端口建立一个端口转发(Port Forwarding)的方式来获取直接被外网访问的VIP通道， 此时这个应用相当于有了一个外网地址。当然也可以手动为一个应用添加端口转发。</p>
+<h1 id="STUN">STUN</h1><p>NAT穿透是基于通信的双方已经知晓如下信息的前提下进行的。</p>
+<ul>
+<li>双方所处NAT的类型</li>
+<li>双方的外网地址和端口</li>
+</ul>
+<p>这些信息都可以通过STUN(RFC3489)协议来获取到，STUN的全称是Simple Traversal of User Datagram Protocol (UDP) Through Network Address Translators (NATs)。上述各种NAT类型也是在STUN协议中定义的。</p>
+<p>需要注意的是STUN(RFC3489)协议已经被RFC5389取代了，虽然缩写没有变，但是英文全称已经变成了Session Traversal Utilities for NAT。RFC5389是在RFC3489上发展而来的， 修改了旧协议的一些缺陷， 同时提供了TCP/TLS穿透和IPv6的支持。更重要的是，从名字可以看出来，协议的定位从原来NAT穿透完整解决方案，变成一种NAT穿透解决方案中的工具。</p>
+<p>RFC5389中NAT的行为探测功能已经被独立出来作为新的RFC规范：RFC5780<br>其中NAT类型定义在RFC4787中，而且也已经废弃了原来的XXX-Cone和Symmetric的NAT类型的定义。</p>
+<h1 id="TURN">TURN</h1><p>考虑通信的一方是在Symetric NAT的后面，且另外一方也是在Symetric NAT的后面(<a href="#tranversal-54">5.4</a>)或者是在Port-restricted NAT的后面(<a href="#tranversal-53">5.3</a>)时， 用传统的打洞方式很难实现NAT的穿透。 但是如果借助外网的一台服务器，问题就可以转化成2个单边是有外网地址的形式的网络。这样可以通过这台服务器的中转来实现与任何NAT网络结构的通信。 这台服务器则相当于通信双方的<em>代理</em>，或许我们可以称其为<em>NAT通信路由器</em>。</p>
+<p>利用这个原理来实现NAT穿透的协议叫做TURN,  全称是Traversal Using Relay NAT，TURN和STUN一样是一个C/S结构模式的协议, 同时支持UDP的TCP的穿越。服务器负责转发客户端之间的所有通信。<br><img src="http://7ximrm.com1.z0.glb.clouddn.com/twocturn.png" alt="turn-topology"></p>
+<p>TURN显而易见的缺点是服务器负担过重，容易造成网络延迟大，效率低。</p>
+<h1 id="ICE">ICE</h1><p>RFC3264(An Offer/Answer Model with the Session Description Protocol)定义了一个请求/回答模式的SDP​协议. 这个协议也是SIP的基础协议。ICE协议也是RFC3264请求/回答模式的一个扩展， 全称Interactive Connectivity Establishment。 这种NAT穿透协议利用了现有的STUN协议和TURN协议，结合了两者的优点。ICE不需要通信终端去判断NAT的存在或者类型，只在最坏的情况下，比如两边都是对称NAT，才会用到TURN转发数据。</p>
+<h1 id="各种NAT类型的比较">各种NAT类型的比较</h1><table>
+<thead>
+<tr>
+<th>NAT类型</th>
+<th>NAT映射建立规则</th>
+<th>目的主机受限规则</th>
+<th>NAT穿透</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>静态NAT</td>
+<td>源IP（静态配置）</td>
+<td>不限制</td>
+<td>简单</td>
+</tr>
+<tr>
+<td>动态NAT</td>
+<td>源IP</td>
+<td>不限制</td>
+<td>简单</td>
+</tr>
+<tr>
+<td>完全锥型NAT</td>
+<td>源IP/源端口</td>
+<td>不限制</td>
+<td>简单</td>
+</tr>
+<tr>
+<td>地址受限的锥型NAT</td>
+<td>源IP/源端口</td>
+<td>IP受限制</td>
+<td>一般</td>
+</tr>
+<tr>
+<td>端口受限的锥型NAT</td>
+<td>源IP/源端口</td>
+<td>IP和端口受限制</td>
+<td>困难</td>
+</tr>
+<tr>
+<td>对称型NAT</td>
+<td>源IP/源端口/目的IP/目的端口</td>
+<td>IP和端口受限制</td>
+<td>非常困难</td>
+</tr>
+</tbody>
+</table>
+<h1 id="参考文献">参考文献</h1><ul>
+<li><a href="https://tools.ietf.org/html/rfc2663" target="_blank" rel="external">NAT RFC2663</a></li>
+<li><a href="https://www.ietf.org/rfc/rfc3489.txt" target="_blank" rel="external">STUN RFC3489</a></li>
+<li><a href="https://tools.ietf.org/html/rfc5389" target="_blank" rel="external">STUN RFC5389</a></li>
+<li><a href="https://tools.ietf.org/html/rfc6062" target="_blank" rel="external">TURN RFC6062</a></li>
+<li><a href="https://tools.ietf.org/html/rfc5245" target="_blank" rel="external">ICE RFC5245</a></li>
+<li><a href="https://tools.ietf.org/html/rfc5780" target="_blank" rel="external">NAT Behavior Discovery RFC5780</a></li>
+<li><a href="http://en.wikipedia.org/wiki/Network_address_translation" target="_blank" rel="external">WiKi NAT</a></li>
+</ul>
+<p>(原创文章，转载请标注来源和作者)</p>
+
+      
+    </div>
+    <footer>
+      
+        
+  
+  <div class="categories">
+    <a href="/categories/Python/">Python</a>
+  </div>
+
+        
+  
+  <div class="tags">
+    <a href="/tags/NAT/">NAT</a>, <a href="/tags/NAT穿透/">NAT穿透</a>, <a href="/tags/Network/">Network</a>
+  </div>
+
+        
+
+<div class="bdsharebuttonbox"><a href="#" class="bds_more" data-cmd="more"></a><a title="分享到有道云笔记" href="#" class="bds_youdao" data-cmd="youdao"></a><a title="分享到新浪微博" href="#" class="bds_tsina" data-cmd="tsina"></a><a title="分享到Facebook" href="#" class="bds_fbook" data-cmd="fbook"></a></div>
+<script>window._bd_share_config={"common":{"bdSnsKey":{},"bdText":"","bdMini":"2","bdMiniList":false,"bdPic":"","bdStyle":"2","bdSize":"16"},"share":{}};with(document)0[(getElementsByTagName('head')[0]||body).appendChild(createElement('script')).src='http://bdimg.share.baidu.com/static/api/js/share.js?v=89860593.js?cdnversion='+~(-new Date()/36e5)];</script>
+
+      
+      <div class="clearfix"></div>
+    </footer>
+  </div>
+</article>
+
+
+<section id="comment">
+  <h1 class="title">留言</h1>
+
+  
+    <!-- 多说评论框 start -->
+      <div class="ds-thread" data-thread-key="post-NAT及其穿透技术浅析" data-title="NAT及其穿透技术浅析" data-url="http://yoursite.com/2012/08/17/NAT及其穿透技术浅析/"></div>
+    <!-- 多说评论框 end -->
+    <!-- 多说公共JS代码 start (一个网页只需插入一次) -->
+    <script type="text/javascript">
+    var duoshuoQuery = {short_name:"twoc"};
+      (function() {
+        var ds = document.createElement('script');
+        ds.type = 'text/javascript';ds.async = true;
+        ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+        ds.charset = 'UTF-8';
+        (document.getElementsByTagName('head')[0]
+         || document.getElementsByTagName('body')[0]).appendChild(ds);
+      })();
+      </script>
+    <!-- 多说公共JS代码 end -->
+  
+
+</section>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  <div class="search">
+  <form action="//google.com/search" method="get" accept-charset="utf-8">
+    <input type="search" name="q" results="0" placeholder="搜索">
+    <input type="hidden" name="q" value="site:yoursite.com">
+  </form>
+</div>
+
+  
+<div class="widget tag">
+  <h3 class="title">分类</h3>
+  <ul class="entry">
+  
+    <li><a href="/categories/Linux/">Linux</a><small>2</small></li>
+  
+    <li><a href="/categories/Python/">Python</a><small>2</small></li>
+  
+  </ul>
+</div>
+
+
+  
+<div class="widget tag">
+  <h3 class="title">标签</h3>
+  <ul class="entry">
+  
+    <li><a href="/tags/C/">C</a><small>1</small></li>
+  
+    <li><a href="/tags/GCC/">GCC</a><small>1</small></li>
+  
+    <li><a href="/tags/IPC/">IPC</a><small>1</small></li>
+  
+    <li><a href="/tags/Linux/">Linux</a><small>2</small></li>
+  
+    <li><a href="/tags/NAT/">NAT</a><small>1</small></li>
+  
+    <li><a href="/tags/NAT穿透/">NAT穿透</a><small>1</small></li>
+  
+    <li><a href="/tags/Network/">Network</a><small>1</small></li>
+  
+    <li><a href="/tags/Pyro/">Pyro</a><small>1</small></li>
+  
+    <li><a href="/tags/Python/">Python</a><small>1</small></li>
+  
+    <li><a href="/tags/Segmentation-fault/">Segmentation fault</a><small>1</small></li>
+  
+    <li><a href="/tags/x86-64/">x86_64</a><small>1</small></li>
+  
+  </ul>
+</div>
+
+
+  
+<div class="widget tagcloud">
+  <h3 class="title">标签云</h3>
+  <div class="entry">
+    <a href="/tags/C/" style="font-size: 10px;">C</a><a href="/tags/GCC/" style="font-size: 10px;">GCC</a><a href="/tags/IPC/" style="font-size: 10px;">IPC</a><a href="/tags/Linux/" style="font-size: 20px;">Linux</a><a href="/tags/NAT/" style="font-size: 10px;">NAT</a><a href="/tags/NAT穿透/" style="font-size: 10px;">NAT穿透</a><a href="/tags/Network/" style="font-size: 10px;">Network</a><a href="/tags/Pyro/" style="font-size: 10px;">Pyro</a><a href="/tags/Python/" style="font-size: 10px;">Python</a><a href="/tags/Segmentation-fault/" style="font-size: 10px;">Segmentation fault</a><a href="/tags/x86-64/" style="font-size: 10px;">x86_64</a>
+  </div>
+</div>
+
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <footer id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2015 Kelvin You
+  
+</div>
+<div class="clearfix"></div></footer>
+  <script src="/js/jquery.min.js"></script>
+<script src="/js/jquery.imagesloaded.min.js"></script>
+<script src="/js/gallery.js"></script>
+
+
+
+
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css" media="screen" type="text/css">
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+  $('.fancybox').fancybox();
+})(jQuery);
+</script>
+
+<a href="https://github.com/weyou"><img style="position: absolute; top: 0; left: 0; border: 0;" src="https://camo.githubusercontent.com/121cd7cbdc3e4855075ea8b558508b91ac463ac2/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f6c6566745f677265656e5f3030373230302e706e67" alt="Fork me on GitHub" data-canonical-src="https://s3.amazonaws.com/github/ribbons/forkme_left_green_007200.png"></a>
+</body>
+</html>
