@@ -387,7 +387,7 @@
     <link href="http://yoursite.com/2012/08/17/NAT%E5%8F%8A%E5%85%B6%E7%A9%BF%E9%80%8F%E6%8A%80%E6%9C%AF%E6%B5%85%E6%9E%90/"/>
     <id>http://yoursite.com/2012/08/17/NAT及其穿透技术浅析/</id>
     <published>2012-08-17T07:14:34.000Z</published>
-    <updated>2015-05-19T08:52:33.146Z</updated>
+    <updated>2015-05-19T09:01:35.430Z</updated>
     <content type="html"><![CDATA[<p>NAT(Network Address Translation) 网络地址转换技术被普遍用于有多台主机但只有一个IP地址能访问Internet的网络中。它是作为一种IPv4地址短缺的临时解决方案而产生的，但随着家用WiFi路由器的普及而变的流行起来。<br><a id="more"></a><br>在我看来，NAT存在的意义不只是解决IP地址的短缺，还与运营商的计费模式有相当大的关系。即使在IP地址数目多如恒河沙数的IPv6时代，如果运营商只按IP地址数目来计费，NAT技术依然不会消亡。</p>
 <p>NAT将网络分为本地网络和外部网络两个部分，内部本地网络(LAN)和外部广域网络(WAN)。内部网络是一个私有的网络， 任何内网主机的IP地址都不会传输到外部网络。内网主机发送到外网主机的数据包，源地址和端口会被NAT修改，实际上NAT充当了内部网络的代理功能。</p>
 <p>与翻译语言用的词典类似，NAT也需要维护一张NAT的映射表。这张表记载了内部IP地址/端口与外部IP地址/端口的映射。除静态NAT之外，与词典有所不同的是，NAT的映射可以是动态建立的， 建立的规则根据NAT的类型有所不同（详见下文）。 </p>
@@ -612,7 +612,7 @@
     
       <category term="Network" scheme="http://yoursite.com/tags/Network/"/>
     
-      <category term="Python" scheme="http://yoursite.com/categories/Python/"/>
+      <category term="Network" scheme="http://yoursite.com/categories/Network/"/>
     
   </entry>
   
